@@ -17,7 +17,9 @@
 
 #include "steering_functions/hc_cc_state_space/hc_cc_state_space.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <iterator>
 
 #include "steering_functions/utilities/utilities.hpp"
 
@@ -179,12 +181,9 @@ namespace steering
         state_curr.state.theta = state.state.theta;
         state_curr.state.kappa = controls.front().kappa;
         state_curr.state.d     = sgn(controls.front().delta_s);
-        for (int i = 0; i < 16; i++)
-        {
-            state_curr.Sigma[i]      = state.Sigma[i];
-            state_curr.Lambda[i]     = state.Lambda[i];
-            state_curr.covariance[i] = state.covariance[i];
-        }
+        std::copy(std::begin(state.Sigma), std::end(state.Sigma), state_curr.Sigma);
+        std::copy(std::begin(state.Lambda), std::end(state.Lambda), state_curr.Lambda);
+        std::copy(std::begin(state.covariance), std::end(state.covariance), state_curr.covariance);
         path_with_covariance.push_back(state_curr);
 
         for (const auto& control : controls)
@@ -224,12 +223,12 @@ namespace steering
 
                 path_with_covariance.push_back(state_next);
                 state_curr.state = state_next.state;
-                for (int i = 0; i < 16; i++)
-                {
-                    state_curr.Sigma[i]      = state_next.Sigma[i];
-                    state_curr.Lambda[i]     = state_next.Lambda[i];
-                    state_curr.covariance[i] = state_next.covariance[i];
-                }
+                std::copy(std::begin(state_next.Sigma), std::end(state_next.Sigma), state_curr.Sigma);
+                std::copy(
+                    std::begin(state_next.Lambda), std::end(state_next.Lambda), state_curr.Lambda);
+                std::copy(std::begin(state_next.covariance),
+                          std::end(state_next.covariance),
+                          state_curr.covariance);
             }
         }
         return path_with_covariance;

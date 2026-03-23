@@ -47,6 +47,18 @@ int main()
         return 1;
     }
 
+    if (!almost_equal(point_distance(-1.0, -1.0, 2.0, 3.0), point_distance(2.0, 3.0, -1.0, -1.0)))
+    {
+        std::cerr << "point_distance symmetry failed" << std::endl;
+        return 1;
+    }
+
+    if (!almost_equal(point_distance(1.25, -8.0, 1.25, -8.0), 0.0))
+    {
+        std::cerr << "point_distance zero-length failed" << std::endl;
+        return 1;
+    }
+
     std::cout << "All angle_utils tests passed." << std::endl;
     return 0;
 }

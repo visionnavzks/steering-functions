@@ -198,33 +198,37 @@ namespace steering
 
             Dubins_State_Space::Dubins_Path path(dubinsLSL(d, alpha, beta)),
                 tmp(dubinsRSR(d, alpha, beta));
-            double len, minLength = path.length();
+            double minLength = path.length();
+            double len       = tmp.length();
 
-            if ((len = tmp.length()) < minLength)
+            if (len < minLength)
             {
                 minLength = len;
                 path      = tmp;
             }
             tmp = dubinsRSL(d, alpha, beta);
-            if ((len = tmp.length()) < minLength)
+            len = tmp.length();
+            if (len < minLength)
             {
                 minLength = len;
                 path      = tmp;
             }
             tmp = dubinsLSR(d, alpha, beta);
-            if ((len = tmp.length()) < minLength)
+            len = tmp.length();
+            if (len < minLength)
             {
                 minLength = len;
                 path      = tmp;
             }
             tmp = dubinsRLR(d, alpha, beta);
-            if ((len = tmp.length()) < minLength)
+            len = tmp.length();
+            if (len < minLength)
             {
                 minLength = len;
                 path      = tmp;
             }
             tmp = dubinsLRL(d, alpha, beta);
-            if ((tmp.length()) < minLength)
+            if (tmp.length() < minLength)
                 path = tmp;
             return path;
         }

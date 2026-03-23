@@ -25,6 +25,7 @@
 
 #include "steering_functions/utilities/utilities.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 
@@ -43,7 +44,9 @@ namespace steering
 
     double point_distance(double x1, double y1, double x2, double y2)
     {
-        return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+        const double dx = x2 - x1;
+        const double dy = y2 - y1;
+        return sqrt(dx * dx + dy * dy);
     }
 
     void polar(double x, double y, double& r, double& theta)
@@ -264,18 +267,12 @@ namespace steering
 
     void double_array_init(double array[], int size, double value)
     {
-        for (int i = 0; i < size; i++)
-        {
-            array[i] = value;
-        }
+        std::fill_n(array, size, value);
     }
 
     void pointer_array_init(void* array[], int size)
     {
-        for (int i = 0; i < size; i++)
-        {
-            array[i] = nullptr;
-        }
+        std::fill_n(array, size, nullptr);
     }
 
 } // namespace steering
