@@ -203,4 +203,17 @@ namespace steering
         return integrate(state, controls, discretization_);
     }
 
+    vector<vector<State>> BaseStateSpace::get_all_paths(const State& state1, const State& state2)
+    {
+        auto                  all_controls = get_all_controls(state1, state2);
+        vector<vector<State>> all_paths;
+        all_paths.reserve(all_controls.size());
+
+        for (const auto& controls : all_controls)
+        {
+            all_paths.push_back(integrate(state1, controls));
+        }
+        return all_paths;
+    }
+
 } // namespace steering

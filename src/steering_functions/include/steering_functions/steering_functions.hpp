@@ -147,6 +147,15 @@ namespace steering
         virtual std::vector<std::vector<Control>> get_all_controls(const State& state1,
                                                                    const State& state2) const = 0;
 
+        /**
+         * @brief Get all possible discretized paths between two states.
+         *        Calls get_all_controls() then integrate() for each control sequence.
+         * @param state1 Starting state
+         * @param state2 Goal state
+         * @return Vector of discretized paths
+         */
+        std::vector<std::vector<State>> get_all_paths(const State& state1, const State& state2);
+
     protected:
         explicit BaseStateSpace(double discretization = 0.1) : discretization_(discretization)
         {
