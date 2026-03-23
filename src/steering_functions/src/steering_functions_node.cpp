@@ -24,7 +24,6 @@
 #include <tf/transform_datatypes.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <Eigen/Dense>
 #include <iostream>
 
 #include "steering_functions/dubins_state_space/dubins_state_space.hpp"
@@ -61,38 +60,30 @@ public:
     ros::Publisher pub_path_;
     ros::Publisher pub_poses_;
     ros::Publisher pub_text_;
-    ros::Publisher pub_covariances_;
 
     // path properties
-    string                        id_;
-    string                        path_type_;
-    double                        discretization_;
-    State_With_Covariance         state_start_;
-    State                         state_goal_;
-    double                        kappa_max_;
-    double                        sigma_max_;
-    vector<State_With_Covariance> path_;
-
-    // filter parameters
-    Motion_Noise      motion_noise_;
-    Measurement_Noise measurement_noise_;
-    Controller        controller_;
+    string         id_;
+    string         path_type_;
+    double         discretization_;
+    State          state_start_;
+    State          state_goal_;
+    double         kappa_max_;
+    double         sigma_max_;
+    vector<State>  path_;
 
     // visualization
     string                          frame_id_;
     nav_msgs::Path                  nav_path_;
     geometry_msgs::PoseArray        pose_array_;
     visualization_msgs::MarkerArray marker_array_text_;
-    visualization_msgs::MarkerArray marker_array_covariance_;
     visualization_msgs::Marker      marker_text_;
-    visualization_msgs::Marker      marker_covariance_;
 
     // constructor
-    PathClass(const string&                path_type,
-              const State_With_Covariance& state_start,
-              const State&                 state_goal,
-              const double                 kappa_max,
-              const double                 sigma_max)
+    PathClass(const string& path_type,
+              const State&  state_start,
+              const State&  state_goal,
+              const double  kappa_max,
+              const double  sigma_max)
         : path_type_(path_type)
         , discretization_(DISCRETIZATION)
         , state_start_(state_start)
@@ -104,28 +95,12 @@ public:
         ros::NodeHandle nh;
         ros::NodeHandle pnh("~");
 
-        // filter parameters
-        nh.param<double>("motion_noise/alpha1", motion_noise_.alpha1, 0.1);
-        nh.param<double>("motion_noise/alpha2", motion_noise_.alpha2, 0.0);
-        nh.param<double>("motion_noise/alpha3", motion_noise_.alpha3, 0.0);
-        nh.param<double>("motion_noise/alpha4", motion_noise_.alpha4, 0.1);
-
-        nh.param<double>("measurement_noise/std_x", measurement_noise_.std_x, 0.1);
-        nh.param<double>("measurement_noise/std_y", measurement_noise_.std_y, 0.1);
-        nh.param<double>("measurement_noise/std_theta", measurement_noise_.std_theta, 0.01);
-
-        nh.param<double>("controller/k1", controller_.k1, 1.0);
-        nh.param<double>("controller/k2", controller_.k2, 1.0);
-        nh.param<double>("controller/k3", controller_.k3, 1.0);
-
         // publisher
         pub_path_  = pnh.advertise<nav_msgs::Path>("visualization_path", 10);
         pub_poses_ = pnh.advertise<geometry_msgs::PoseArray>("visualization_poses", 10);
         pub_text_  = pnh.advertise<visualization_msgs::MarkerArray>("visualization_text", 10);
-        pub_covariances_ =
-            pnh.advertise<visualization_msgs::MarkerArray>("visualization_covariances", 10);
         while (pub_path_.getNumSubscribers() == 0 || pub_poses_.getNumSubscribers() == 0 ||
-               pub_text_.getNumSubscribers() == 0 || pub_covariances_.getNumSubscribers() == 0)
+               pub_text_.getNumSubscribers() == 0)
             ros::Duration(0.001).sleep();
 
         // path
@@ -133,92 +108,79 @@ public:
         {
             id_ = "1";
             CC_Dubins_State_Space state_space(kappa_max_, sigma_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "CC00_Dubins")
         {
             id_ = "2";
             CC00_Dubins_State_Space state_space(kappa_max_, sigma_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "CC0pm_Dubins")
         {
             id_ = "3";
             CC0pm_Dubins_State_Space state_space(kappa_max_, sigma_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "CCpm0_Dubins")
         {
             id_ = "4";
             CCpm0_Dubins_State_Space state_space(kappa_max_, sigma_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "CCpmpm_Dubins")
         {
             id_ = "5";
             CCpmpm_Dubins_State_Space state_space(kappa_max_, sigma_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "Dubins")
         {
             id_ = "6";
             Dubins_State_Space state_space(kappa_max_, discretization_, true);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "CC00_RS")
         {
             id_ = "7";
             CC00_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "HC_RS")
         {
             id_ = "8";
             HC_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "HC00_RS")
         {
             id_ = "9";
             HC00_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "HC0pm_RS")
         {
             id_ = "10";
             HC0pm_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "HCpm0_RS")
         {
             id_ = "11";
             HCpm0_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "HCpmpm_RS")
         {
             id_ = "12";
             HCpmpm_Reeds_Shepp_State_Space state_space(kappa_max_, sigma_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
         else if (path_type_ == "RS")
         {
             id_ = "13";
             Reeds_Shepp_State_Space state_space(kappa_max_, discretization_);
-            state_space.set_filter_parameters(motion_noise_, measurement_noise_, controller_);
-            path_ = state_space.get_path_with_covariance(state_start_, state_goal_);
+            path_ = state_space.get_path(state_start_, state_goal_);
         }
 
         // nav_path
@@ -236,83 +198,23 @@ public:
         marker_text_.color.b         = 1.0;
         marker_text_.color.a         = 1.0;
 
-        // marker_covariance
-        marker_covariance_.header.frame_id = frame_id_;
-        marker_covariance_.type            = visualization_msgs::Marker::SPHERE;
-        marker_covariance_.action          = visualization_msgs::Marker::ADD;
-        marker_covariance_.lifetime        = ros::Duration(VISUALIZATION_DURATION);
-        marker_covariance_.color.r         = 0.6;
-        marker_covariance_.color.g         = 0.0;
-        marker_covariance_.color.b         = 0.6;
-        marker_covariance_.color.a         = 0.4;
-    }
-
-    // visualization
-    void covariance_to_marker(const State_With_Covariance& state,
-                              visualization_msgs::Marker&  marker)
-    {
-        marker.pose.position.x = state.state.x;
-        marker.pose.position.y = state.state.y;
-        marker.pose.position.z = 0.0;
-
-        // eigenvalues/-vectors
-        Eigen::Vector3d eigenvalues(Eigen::Vector3d::Identity());
-        Eigen::Matrix3d eigenvectors(Eigen::Matrix3d::Zero());
-        Eigen::Matrix3d covariance;
-        covariance << state.covariance[0 * 4 + 0], state.covariance[0 * 4 + 1],
-            state.covariance[0 * 4 + 2], state.covariance[1 * 4 + 0], state.covariance[1 * 4 + 1],
-            state.covariance[1 * 4 + 2], state.covariance[2 * 4 + 0], state.covariance[2 * 4 + 1],
-            state.covariance[2 * 4 + 2];
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(covariance);
-        if (eigensolver.info() == Eigen::Success)
-        {
-            eigenvalues  = eigensolver.eigenvalues();
-            eigenvectors = eigensolver.eigenvectors();
-        }
-        else
-        {
-            ROS_WARN("Failed to visualize covariance because eigenvalues can not be computed.");
-        }
-
-        // make right-handed system
-        if (eigenvectors.determinant() < 0)
-            eigenvectors.col(0) *= -1.0;
-
-        // orientation
-        tf::Matrix3x3  rotation(eigenvectors(0, 0),
-                               eigenvectors(0, 1),
-                               eigenvectors(0, 2),
-                               eigenvectors(1, 0),
-                               eigenvectors(1, 1),
-                               eigenvectors(1, 2),
-                               eigenvectors(2, 0),
-                               eigenvectors(2, 1),
-                               eigenvectors(2, 2));
-        tf::Quaternion quaternion;
-        rotation.getRotation(quaternion);
-        quaternionTFToMsg(quaternion, marker.pose.orientation);
-
-        // scale with 3 * standard deviation
-        marker.scale.x = 2 * 3 * sqrt(eigenvalues[0]);
-        marker.scale.y = 2 * 3 * sqrt(eigenvalues[1]);
-        marker.scale.z = 2 * 3 * sqrt(eigenvalues[2]);
     }
 
     void visualize()
     {
         // start
         marker_text_.id              = 1;
-        marker_text_.pose.position.x = state_start_.state.x;
-        marker_text_.pose.position.y = state_start_.state.y;
+        marker_text_.pose.position.x = state_start_.x;
+        marker_text_.pose.position.y = state_start_.y;
         marker_text_.scale.z         = 0.7;
         marker_text_.text            = "start";
         marker_array_text_.markers.push_back(marker_text_);
 
         geometry_msgs::Pose pose_start;
-        pose_start.position.x    = state_start_.state.x;
-        pose_start.position.y    = state_start_.state.y;
-        pose_start.orientation.z = sin(state_start_.state.theta / 2.0);
-        pose_start.orientation.w = cos(state_start_.state.theta / 2.0);
+        pose_start.position.x    = state_start_.x;
+        pose_start.position.y    = state_start_.y;
+        pose_start.orientation.z = sin(state_start_.theta / 2.0);
+        pose_start.orientation.w = cos(state_start_.theta / 2.0);
         pose_array_.poses.push_back(pose_start);
 
         // goal
@@ -342,26 +244,17 @@ public:
         for (const auto& state : path_)
         {
             geometry_msgs::PoseStamped pose;
-            pose.pose.position.x    = state.state.x;
-            pose.pose.position.y    = state.state.y;
-            pose.pose.orientation.z = sin(state.state.theta / 2.0);
-            pose.pose.orientation.w = cos(state.state.theta / 2.0);
+            pose.pose.position.x    = state.x;
+            pose.pose.position.y    = state.y;
+            pose.pose.orientation.z = sin(state.theta / 2.0);
+            pose.pose.orientation.w = cos(state.theta / 2.0);
             nav_path_.poses.push_back(pose);
-        }
-
-        // covariances
-        for (int i = 0; i < path_.size(); i += 10)
-        {
-            marker_covariance_.id = i;
-            covariance_to_marker(path_[i], marker_covariance_);
-            marker_array_covariance_.markers.push_back(marker_covariance_);
         }
 
         // publish
         pub_path_.publish(nav_path_);
         pub_poses_.publish(pose_array_);
         pub_text_.publish(marker_array_text_);
-        pub_covariances_.publish(marker_array_covariance_);
         ros::spinOnce();
     }
 };
@@ -382,9 +275,6 @@ public:
     vector<geometry_msgs::Point> wheel_;
     double                       wheel_radius_;
     double                       wheel_width_;
-
-    // measurement noise
-    Measurement_Noise measurement_noise_;
 
     // visualization
     string                          frame_id_;
@@ -434,11 +324,6 @@ public:
         wheel_.push_back(point3);
         wheel_.push_back(point4);
 
-        // measurement noise
-        nh.param<double>("measurement_noise/std_x", measurement_noise_.std_x, 0.1);
-        nh.param<double>("measurement_noise/std_y", measurement_noise_.std_y, 0.1);
-        nh.param<double>("measurement_noise/std_theta", measurement_noise_.std_theta, 0.01);
-
         // marker chassis
         marker_chassis_.header.frame_id = frame_id_;
         marker_chassis_.action          = visualization_msgs::Marker::ADD;
@@ -475,7 +360,7 @@ public:
         }
     }
 
-    void visualize(const vector<State_With_Covariance>& path)
+    void visualize(const vector<State>& path)
     {
         marker_array_swath_.markers.clear();
         marker_chassis_.points.clear();
@@ -488,12 +373,12 @@ public:
             vector<geometry_msgs::Point> oriented_footprint;
 
             // steering angle
-            if (fabs(state.state.kappa) > 1e-4)
+            if (fabs(state.kappa) > 1e-4)
             {
                 steer_angle_fl =
-                    atan(wheel_fl_pos_.x / ((1 / state.state.kappa) - wheel_fl_pos_.y));
+                    atan(wheel_fl_pos_.x / ((1 / state.kappa) - wheel_fl_pos_.y));
                 steer_angle_fr =
-                    atan(wheel_fr_pos_.x / ((1 / state.state.kappa) - wheel_fr_pos_.y));
+                    atan(wheel_fr_pos_.x / ((1 / state.kappa) - wheel_fr_pos_.y));
             }
             else
             {
@@ -507,11 +392,11 @@ public:
             costmap_2d::transformFootprint(
                 wheel_fr_pos_.x, wheel_fr_pos_.y, steer_angle_fr, wheel_, wheel_fr);
             costmap_2d::transformFootprint(
-                state.state.x, state.state.y, state.state.theta, wheel_fl, oriented_wheel_fl);
+                state.x, state.y, state.theta, wheel_fl, oriented_wheel_fl);
             costmap_2d::transformFootprint(
-                state.state.x, state.state.y, state.state.theta, wheel_fr, oriented_wheel_fr);
+                state.x, state.y, state.theta, wheel_fr, oriented_wheel_fr);
             costmap_2d::transformFootprint(
-                state.state.x, state.state.y, state.state.theta, footprint_, oriented_footprint);
+                state.x, state.y, state.theta, footprint_, oriented_footprint);
 
             polygon_to_marker(oriented_footprint, marker_chassis_);
             polygon_to_marker(oriented_wheel_fl, marker_wheels_);
@@ -551,27 +436,19 @@ int main(int argc, char** argv)
     srand(seed);
     while (ros::ok())
     {
-        State_With_Covariance start;
-        start.state.x     = random(-OPERATING_REGION_X / 2.0, OPERATING_REGION_X / 2.0);
-        start.state.y     = random(-OPERATING_REGION_Y / 2.0, OPERATING_REGION_Y / 2.0);
-        start.state.theta = random(-OPERATING_REGION_THETA / 2.0, OPERATING_REGION_THETA / 2.0);
-        start.state.kappa = random(-robot.kappa_max_, robot.kappa_max_);
-        start.state.d     = 0.0;
-        start.covariance[0 * 4 + 0] = start.Sigma[0 * 4 + 0] =
-            pow(robot.measurement_noise_.std_x, 2);
-        start.covariance[1 * 4 + 1] = start.Sigma[1 * 4 + 1] =
-            pow(robot.measurement_noise_.std_y, 2);
-        start.covariance[2 * 4 + 2] = start.Sigma[2 * 4 + 2] =
-            pow(robot.measurement_noise_.std_theta, 2);
+        State start;
+        start.x     = random(-OPERATING_REGION_X / 2.0, OPERATING_REGION_X / 2.0);
+        start.y     = random(-OPERATING_REGION_Y / 2.0, OPERATING_REGION_Y / 2.0);
+        start.theta = random(-OPERATING_REGION_THETA / 2.0, OPERATING_REGION_THETA / 2.0);
+        start.kappa = random(-robot.kappa_max_, robot.kappa_max_);
+        start.d     = 0.0;
 
-        State_With_Covariance start_wout_curv;
-        start_wout_curv.state.x     = start.state.x;
-        start_wout_curv.state.y     = start.state.y;
-        start_wout_curv.state.theta = start.state.theta;
-        start_wout_curv.state.kappa = 0.0;
-        start_wout_curv.state.d     = start.state.d;
-        copy(&start.covariance[0], &start.covariance[15], &start_wout_curv.covariance[0]);
-        copy(&start.Sigma[0], &start.Sigma[15], &start_wout_curv.Sigma[0]);
+        State start_wout_curv;
+        start_wout_curv.x     = start.x;
+        start_wout_curv.y     = start.y;
+        start_wout_curv.theta = start.theta;
+        start_wout_curv.kappa = 0.0;
+        start_wout_curv.d     = start.d;
 
         State goal;
         goal.x     = random(-OPERATING_REGION_X / 2.0, OPERATING_REGION_X / 2.0);

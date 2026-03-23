@@ -20,7 +20,6 @@
 
 #include <vector>
 
-#include "steering_functions/filter/ekf.hpp"
 #include "steering_functions/hc_cc_state_space/hc_cc_circle.hpp"
 #include "steering_functions/steering_functions.hpp"
 
@@ -33,11 +32,6 @@ namespace steering
         /** \brief Constructor */
         HC_CC_State_Space(double kappa, double sigma, double discretization);
 
-        /** \brief Sets the parameters required by the filter */
-        void set_filter_parameters(const Motion_Noise&      motion_noise,
-                                   const Measurement_Noise& measurement_noise,
-                                   const Controller&        controller);
-
         /** \brief Virtual function that returns controls of the shortest path from state1 to state2
          */
         std::vector<Control> get_controls(const State& state1,
@@ -48,16 +42,6 @@ namespace steering
         std::vector<State>
         get_path(const State& state1, const State& state2, std::vector<Control>& controls) override;
 
-        /** \brief Returns path including covariances from state1 to state2 */
-        std::vector<State_With_Covariance>
-        get_path_with_covariance(const State_With_Covariance& state1, const State& state2) const;
-
-        /** \brief Returns integrated states including covariance given a start state and controls
-         */
-        std::vector<State_With_Covariance>
-        integrate_with_covariance(const State_With_Covariance& state,
-                                  const std::vector<Control>&  controls) const;
-
         std::vector<std::vector<Control>> get_all_controls(const State& state1,
                                                            const State& state2) const override;
 
@@ -67,9 +51,6 @@ namespace steering
 
         /** \brief Parameters of a hc-/cc-circle */
         HC_CC_Circle_Param hc_cc_circle_param_;
-
-        /** \brief Extended Kalman Filter for uncertainty propagation */
-        EKF ekf_;
     };
 
 } // namespace steering
