@@ -2,12 +2,12 @@
 
 This repository now contains:
 
-- Legacy C++ implementation under `/home/runner/work/steering-functions/steering-functions/src/steering_functions`
-- A new Rust workspace and crate under `/home/runner/work/steering-functions/steering-functions/rust/steering_functions`
+- Legacy C++ implementation under `src/steering_functions`
+- A new Rust workspace and crate under `rust/steering_functions`
 
 ## Rust quick start
 
-From `/home/runner/work/steering-functions/steering-functions`:
+From the repository root:
 
 ```bash
 cargo fmt --all
@@ -17,4 +17,4 @@ cargo test --workspace --all-targets
 
 ## CI
 
-GitHub Actions CI is configured in `/home/runner/work/steering-functions/steering-functions/.github/workflows/ci.yml` and runs Rust format, lint, and tests on every push and pull request.
+GitHub Actions CI is configured in `.github/workflows/ci.yml` and runs Rust format, lint, and tests on every push and pull request.
