@@ -64,7 +64,6 @@
 #include <limits>
 #include <vector>
 
-#include "steering_functions/filter/ekf.hpp"
 #include "steering_functions/steering_functions.hpp"
 
 namespace steering
@@ -134,11 +133,6 @@ namespace steering
             kappa_inv_ = 1 / kappa;
         }
 
-        /** \brief Sets the parameters required by the filter */
-        void set_filter_parameters(const Motion_Noise&      motion_noise,
-                                   const Measurement_Noise& measurement_noise,
-                                   const Controller&        controller);
-
         /** \brief Returns type and length of segments of path from state1 to state2 with curvature
          * = 1.0 */
         Reeds_Shepp_Path reeds_shepp(const State& state1, const State& state2) const;
@@ -159,26 +153,12 @@ namespace steering
         std::vector<Control>
         extract_controls_from_path(Reeds_Shepp_State_Space::Reeds_Shepp_Path path) const;
 
-        /** \brief Returns shortest path including covariances from state1 to state2 with curvature
-         * = kappa_ */
-        std::vector<State_With_Covariance>
-        get_path_with_covariance(const State_With_Covariance& state1, const State& state2) const;
-
-        /** \brief Returns integrated states including covariance given a start state and controls
-         * with curvature = kappa_ */
-        std::vector<State_With_Covariance>
-        integrate_with_covariance(const State_With_Covariance& state,
-                                  const std::vector<Control>&  controls) const;
-
     private:
         /** \brief Curvature */
         double kappa_;
 
         /** \brief Inverse of curvature */
         double kappa_inv_;
-
-        /** \brief Extended Kalman Filter for uncertainty propagation */
-        EKF ekf_;
     };
 
 } // namespace steering
