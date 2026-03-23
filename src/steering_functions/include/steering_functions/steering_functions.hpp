@@ -20,8 +20,11 @@
 #ifndef STEERING_FUNCTIONS_HPP
 #define STEERING_FUNCTIONS_HPP
 
+#include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <iostream>
-#include <sstream> // This is required for std::ostringstream
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -109,33 +112,73 @@ namespace steering
         double k3;
     };
 
+    /** \brief Base class for all steering state spaces.
+     *
+     *  Provides common path integration, interpolation, and ODE integration.
+     *  Subclasses must implement get_controls() and get_all_controls().
+     */
     struct BaseStateSpace
     {
     public:
         virtual ~BaseStateSpace() = default;
 
         /**
-         * @brief Get path between two states with controls
+         * @brief Single-step ODE integration for state propagation.
+         *
+         * Handles clothoid (variable curvature), circular arc (constant curvature),
+         * and straight line segments.
+         *
+         * @param state Current state
+         * @param control Control input for this segment
+         * @param integration_step Step size for integration
+         * @return Next state after integration
+         */
+        static State
+        integrate_ODE(const State& state, const Control& control, double integration_step);
+
+        /**
+         * @brief Get controls for the shortest path from state1 to state2
+         * @param state1 Starting state
+         * @param state2 Goal state
+         * @return Vector of controls representing the shortest path
+         */
+        virtual std::vector<Control> get_controls(const State& state1,
+                                                  const State& state2) const = 0;
+
+        /**
+         * @brief Get path between two states (convenience overload).
+         *        Delegates to the 3-parameter version.
+         * @param state1 Starting state
+         * @param state2 Goal state
+         * @return Vector of states representing the path
+         */
+        std::vector<State> get_path(const State& state1, const State& state2);
+
+        /**
+         * @brief Get path between two states with controls output.
+         *        Default: calls get_controls() then integrate().
          * @param state1 Starting state
          * @param state2 Goal state
          * @param controls Output vector to store control sequence
          * @return Vector of states representing the path
          */
         virtual std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls) = 0;
+        get_path(const State& state1, const State& state2, std::vector<Control>& controls);
 
         /**
-         * @brief Interpolate state along a path at given parameter
+         * @brief Interpolate state along a path at given normalized parameter.
+         *        Default implementation uses integrate_ODE.
          * @param state Starting state
          * @param controls Control sequence defining the path
          * @param t Interpolation parameter in [0,1]
          * @return Interpolated state
          */
         virtual State
-        interpolate(const State& state, const std::vector<Control>& controls, double t) const = 0;
+        interpolate(const State& state, const std::vector<Control>& controls, double t) const;
 
         /**
-         * @brief Integrate controls to generate path
+         * @brief Integrate controls to generate a discretized path.
+         *        Default implementation uses integrate_ODE.
          * @param state Starting state
          * @param controls Control sequence to integrate
          * @param discretization Step size for integration
@@ -143,7 +186,16 @@ namespace steering
          */
         virtual std::vector<State> integrate(const State&                state,
                                              const std::vector<Control>& controls,
-                                             double                      discretization) const = 0;
+                                             double                      discretization) const;
+
+        /**
+         * @brief Integrate controls using the stored discretization step.
+         * @param state Starting state
+         * @param controls Control sequence to integrate
+         * @return Vector of states representing the discretized path
+         */
+        std::vector<State> integrate(const State&                state,
+                                     const std::vector<Control>& controls) const;
 
         /**
          * @brief Get all possible control sequences between two states
@@ -155,9 +207,15 @@ namespace steering
                                                                    const State& state2) const = 0;
 
     protected:
-        BaseStateSpace()                                 = default;
+        explicit BaseStateSpace(double discretization = 0.1) : discretization_(discretization)
+        {
+            assert(discretization > 0.0);
+        }
         BaseStateSpace(const BaseStateSpace&)            = default;
         BaseStateSpace& operator=(const BaseStateSpace&) = default;
+
+        /** \brief Discretization step size for path integration */
+        double discretization_;
     };
 
 } // namespace steering

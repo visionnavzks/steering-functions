@@ -5,6 +5,7 @@ find_package(Eigen3 REQUIRED)
 
 file(GLOB SRC_HC_CC_SS src/hc_cc_state_space/*.cpp)
 set(SRC_FILES
+    src/base_state_space.cpp
     src/dubins_state_space/dubins_state_space.cpp
     src/reeds_shepp_state_space/reeds_shepp_state_space.cpp
     src/utilities/utilities.cpp

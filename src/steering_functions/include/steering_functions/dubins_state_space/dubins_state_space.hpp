@@ -131,7 +131,7 @@ namespace steering
 
         /** \brief Constructor of the Dubins_State_Space */
         Dubins_State_Space(double kappa, double discretization = 0.1, bool forwards = true)
-            : kappa_(kappa), discretization_(discretization), forwards_(forwards)
+            : BaseStateSpace(discretization), kappa_(kappa), forwards_(forwards)
         {
             assert(kappa > 0.0 && discretization > 0.0);
             kappa_inv_ = 1 / kappa;
@@ -151,14 +151,15 @@ namespace steering
 
         /** \brief Returns controls of the shortest path from state1 to state2 with curvature =
          * kappa_ */
-        std::vector<Control> get_controls(const State& state1, const State& state2) const;
+        std::vector<Control> get_controls(const State& state1,
+                                          const State& state2) const override;
 
         /** \brief Returns controls for pure reverse driving path from state1 to state2 
          * by swapping start/end points and reversing the path direction */
         std::vector<Control> get_controls_reverse(const State& state1, const State& state2) const;
 
         std::vector<std::vector<Control>> get_all_controls(const State& state1,
-                                                           const State& state2) const
+                                                           const State& state2) const override
         {
             std::vector<std::vector<Control>> all_controls;
             // Add forward driving path
@@ -169,23 +170,14 @@ namespace steering
         }
 
         /** \brief Returns shortest path from state1 to state2 with curvature = kappa_ 
-         * Automatically selects the shortest path regardless of driving direction */
+         * Automatically selects the shortest path regardless of driving direction.
+         * Hides base class convenience version to add forward/reverse comparison. */
         std::vector<State> get_path(const State& state1, const State& state2);
-        std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls_);
 
         /** \brief Returns shortest path including covariances from state1 to state2 with curvature
          * = kappa_ */
         std::vector<State_With_Covariance>
         get_path_with_covariance(const State_With_Covariance& state1, const State& state2) const;
-
-        /** \brief Returns integrated states given a start state and controls with curvature =
-         * kappa_ */
-        std::vector<State> integrate(const State&                state,
-                                     const std::vector<Control>& controls) const;
-        std::vector<State> integrate(const State&                state,
-                                     const std::vector<Control>& controls,
-                                     double                      discretization_) const;
 
         /** \brief Returns integrated states including covariance given a start state and controls
          * with curvature = kappa_ */
@@ -193,24 +185,10 @@ namespace steering
         integrate_with_covariance(const State_With_Covariance& state,
                                   const std::vector<Control>&  controls) const;
 
-        /** \brief Returns interpolated state at distance t in [0,1] (percent of total path length
-         * with curvature = kappa_) */
-        State interpolate(const State& state, const std::vector<Control>& controls, double t) const;
-
-        State interpolate(const State&                state,
-                          const std::vector<Control>& controls,
-                          double                      t,
-                          double                      discretization_) const;
-
+        /** \brief Multi-point interpolation: returns states at multiple normalized distances */
         std::vector<State> interpolate(const State&                state,
                                        const std::vector<Control>& controls,
                                        const std::vector<double>&  t) const;
-
-        /** \brief Returns integrated state given a start state, a control, and an integration step
-         */
-        /** Single step accumulation */
-        inline State
-        integrate_ODE(const State& state, const Control& control, double integration_step) const;
 
     private:
         /** \brief Core method to generate controls for a Dubins path */
@@ -222,9 +200,6 @@ namespace steering
 
         /** \brief Inverse of curvature */
         double kappa_inv_;
-
-        /** \brief Discretization of path */
-        double discretization_;
 
         /** \brief Driving direction */
         bool forwards_;
