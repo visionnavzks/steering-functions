@@ -17,6 +17,7 @@
 
 #include "steering_functions/hc_cc_state_space/hc_cc_state_space.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "steering_functions/utilities/utilities.hpp"
@@ -103,7 +104,7 @@ namespace steering
                                                double                 discretization_) const
     {
         vector<State> path;
-        if (controls.size() < 1)
+        if (controls.empty())
         {
             return path;
         }
@@ -179,12 +180,9 @@ namespace steering
         state_curr.state.theta = state.state.theta;
         state_curr.state.kappa = controls.front().kappa;
         state_curr.state.d     = sgn(controls.front().delta_s);
-        for (int i = 0; i < 16; i++)
-        {
-            state_curr.Sigma[i]      = state.Sigma[i];
-            state_curr.Lambda[i]     = state.Lambda[i];
-            state_curr.covariance[i] = state.covariance[i];
-        }
+        std::copy(state.Sigma, state.Sigma + 16, state_curr.Sigma);
+        std::copy(state.Lambda, state.Lambda + 16, state_curr.Lambda);
+        std::copy(state.covariance, state.covariance + 16, state_curr.covariance);
         path_with_covariance.push_back(state_curr);
 
         for (const auto& control : controls)
@@ -224,12 +222,9 @@ namespace steering
 
                 path_with_covariance.push_back(state_next);
                 state_curr.state = state_next.state;
-                for (int i = 0; i < 16; i++)
-                {
-                    state_curr.Sigma[i]      = state_next.Sigma[i];
-                    state_curr.Lambda[i]     = state_next.Lambda[i];
-                    state_curr.covariance[i] = state_next.covariance[i];
-                }
+                std::copy(state_next.Sigma, state_next.Sigma + 16, state_curr.Sigma);
+                std::copy(state_next.Lambda, state_next.Lambda + 16, state_curr.Lambda);
+                std::copy(state_next.covariance, state_next.covariance + 16, state_curr.covariance);
             }
         }
         return path_with_covariance;
@@ -320,7 +315,6 @@ namespace steering
                                     &state_next.y,
                                     &state_next.theta);
                 state_next.kappa = kappa;
-                // state_next.sigma = 0.0;
             }
             else
             {
@@ -332,7 +326,6 @@ namespace steering
                                      &state_next.x,
                                      &state_next.y);
                 state_next.theta = state.theta;
-                // state_next.kappa = state.kappa;
             }
         }
         state_next.d = d;

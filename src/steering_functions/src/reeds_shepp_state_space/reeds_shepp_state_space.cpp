@@ -59,6 +59,7 @@
 
 #include "steering_functions/reeds_shepp_state_space/reeds_shepp_state_space.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "steering_functions/utilities/utilities.hpp"
@@ -727,7 +728,7 @@ namespace steering
                                                      double                 discretization_) const
     {
         vector<State> path;
-        if (controls.size() < 1)
+        if (controls.empty())
         {
             return path;
         }
@@ -799,12 +800,9 @@ namespace steering
         state_curr.state.x     = state.state.x;
         state_curr.state.y     = state.state.y;
         state_curr.state.theta = state.state.theta;
-        for (int i = 0; i < 16; i++)
-        {
-            state_curr.Sigma[i]      = state.Sigma[i];
-            state_curr.Lambda[i]     = state.Lambda[i];
-            state_curr.covariance[i] = state.covariance[i];
-        }
+        std::copy(state.Sigma, state.Sigma + 16, state_curr.Sigma);
+        std::copy(state.Lambda, state.Lambda + 16, state_curr.Lambda);
+        std::copy(state.covariance, state.covariance + 16, state_curr.covariance);
 
         for (const auto& control : controls)
         {
@@ -839,12 +837,9 @@ namespace steering
 
                 path_with_covariance.push_back(state_next);
                 state_curr.state = state_next.state;
-                for (int i = 0; i < 16; i++)
-                {
-                    state_curr.Sigma[i]      = state_next.Sigma[i];
-                    state_curr.Lambda[i]     = state_next.Lambda[i];
-                    state_curr.covariance[i] = state_next.covariance[i];
-                }
+                std::copy(state_next.Sigma, state_next.Sigma + 16, state_curr.Sigma);
+                std::copy(state_next.Lambda, state_next.Lambda + 16, state_curr.Lambda);
+                std::copy(state_next.covariance, state_next.covariance + 16, state_curr.covariance);
             }
         }
         return path_with_covariance;
