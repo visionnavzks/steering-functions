@@ -1,0 +1,8 @@
+[package]
+name = "steering-functions"
+version = "0.1.0"
+edition = "2021"
+description = "Steering functions for path planning (Dubins, Reeds-Shepp, HC/CC state spaces)"
+license = "Apache-2.0"
+
+[dependencies]
