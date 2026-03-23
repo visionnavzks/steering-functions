@@ -1,0 +1,3 @@
+[workspace]
+members = ["rust/steering_functions"]
+resolver = "2"
