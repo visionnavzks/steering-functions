@@ -17,8 +17,7 @@
  *  permissions and limitations under the License.
  ***********************************************************************/
 
-#ifndef STEERING_FUNCTIONS_HPP
-#define STEERING_FUNCTIONS_HPP
+#pragma once
 
 #include <iostream>
 #include <sstream> // This is required for std::ostringstream
@@ -162,4 +161,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

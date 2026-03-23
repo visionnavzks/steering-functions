@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef CCPMPM_DUBINS_STATE_SPACE_HPP
-#define CCPMPM_DUBINS_STATE_SPACE_HPP
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -97,4 +96,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

@@ -15,8 +15,7 @@
  *  limitations under the License.
  * *********************************************************************/
 
-#ifndef EKF_HPP
-#define EKF_HPP
+#pragma once
 
 #include <Eigen/Dense>
 
@@ -103,4 +102,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

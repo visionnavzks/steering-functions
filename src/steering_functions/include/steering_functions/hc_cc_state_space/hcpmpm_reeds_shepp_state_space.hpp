@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef HCPMPM_REEDS_SHEPP_STATE_SPACE_HPP
-#define HCPMPM_REEDS_SHEPP_STATE_SPACE_HPP
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -94,4 +93,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

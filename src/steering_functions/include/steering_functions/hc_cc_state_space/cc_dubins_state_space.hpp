@@ -15,8 +15,7 @@
  *  limitations under the License.
  * *********************************************************************/
 
-#ifndef CC_DUBINS_STATE_SPACE_HPP
-#define CC_DUBINS_STATE_SPACE_HPP
+#pragma once
 
 #include <utility>
 #include <vector>
@@ -76,4 +75,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

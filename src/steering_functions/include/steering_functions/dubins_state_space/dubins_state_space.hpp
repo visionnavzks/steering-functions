@@ -57,8 +57,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#ifndef __DUBINS_STATE_SPACE_HPP_
-#define __DUBINS_STATE_SPACE_HPP_
+#pragma once
 
 #include <cassert>
 #include <limits>
@@ -235,4 +234,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

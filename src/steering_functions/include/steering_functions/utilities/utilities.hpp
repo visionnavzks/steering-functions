@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef UTILITIES_HPP
-#define UTILITIES_HPP
+#pragma once
 
 #include "fresnel.data"
 
@@ -143,4 +142,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

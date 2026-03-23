@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef PATHS_HPP
-#define PATHS_HPP
+#pragma once
 
 #include <numeric>
 #include <vector>
@@ -225,4 +224,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

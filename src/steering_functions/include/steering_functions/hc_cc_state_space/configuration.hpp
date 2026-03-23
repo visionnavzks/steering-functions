@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef CONFIGURATION_HPP
-#define CONFIGURATION_HPP
+#pragma once
 
 namespace steering
 {
@@ -59,4 +58,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

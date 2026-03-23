@@ -15,8 +15,7 @@
  *  limitations under the License.
  ***********************************************************************/
 
-#ifndef HC_CC_STATE_SPACE_HPP
-#define HC_CC_STATE_SPACE_HPP
+#pragma once
 
 #include <vector>
 
@@ -93,4 +92,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

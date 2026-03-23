@@ -57,8 +57,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#ifndef __REEDS_SHEPP_STATE_SPACE_HPP_
-#define __REEDS_SHEPP_STATE_SPACE_HPP_
+#pragma once
 
 #include <cassert>
 #include <limits>
@@ -211,4 +210,3 @@ namespace steering
 
 } // namespace steering
 
-#endif

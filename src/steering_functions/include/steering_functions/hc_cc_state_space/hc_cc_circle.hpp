@@ -23,8 +23,7 @@
 *  directory of this source tree.
 **********************************************************************/
 
-#ifndef HC_CC_CIRCLE_HPP
-#define HC_CC_CIRCLE_HPP
+#pragma once
 
 #include "steering_functions/hc_cc_state_space/configuration.hpp"
 
@@ -133,4 +132,3 @@ namespace steering
 
 } // namespace steering
 
-#endif
