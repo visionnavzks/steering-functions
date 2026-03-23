@@ -185,7 +185,7 @@ namespace steering
             double Lmin = path.length();
             for (const auto& p : paths)
             {
-                double L = p.length();
+                const double L = p.length();
                 if (L < Lmin)
                 {
                     path = p;

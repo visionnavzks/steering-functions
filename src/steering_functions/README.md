@@ -117,6 +117,10 @@ To run a single test, e.g. the timing test, execute
     cd catkin_ws/devel/lib/steering_functions
     ./timing_test
 
+For the standalone refactor module in this repository, run:
+
+    ./cpp_refactor/build.sh
+
 
 ## Documentation
 ### Conventions
