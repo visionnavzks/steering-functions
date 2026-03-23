@@ -212,7 +212,10 @@ namespace path_helpers
         }
     }
 
-    // ===== RS-specific existence checks (identical across all RS variants) =====
+    // ===== RS-specific existence checks =====
+    // These check direction flags and compare distance against a threshold.
+    // The threshold formula differs between CC and HC variants, so the
+    // caller computes the specific threshold and passes it in.
 
     inline bool TcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
                             double two_radius_threshold)
@@ -229,7 +232,7 @@ namespace path_helpers
     }
 
     inline bool TcTcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                              double two_radius_threshold)
+                              double upper_bound)
     {
         if (c1.left == c2.left)
         {
@@ -239,11 +242,11 @@ namespace path_helpers
         {
             return false;
         }
-        return distance <= 2 * two_radius_threshold;
+        return distance <= upper_bound;
     }
 
     inline bool TcTT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                             double two_kappa_inv, double two_radius)
+                             double upper_bound, double lower_bound)
     {
         if (c1.left == c2.left)
         {
@@ -253,11 +256,11 @@ namespace path_helpers
         {
             return false;
         }
-        return distance <= two_kappa_inv + two_radius;
+        return (distance <= upper_bound) && (distance >= lower_bound);
     }
 
     inline bool TTcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                             double two_kappa_inv, double two_radius)
+                             double upper_bound, double lower_bound)
     {
         if (c1.left == c2.left)
         {
@@ -267,41 +270,13 @@ namespace path_helpers
         {
             return false;
         }
-        return distance <= two_radius + two_kappa_inv;
-    }
-
-    inline bool TiSTcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                               double radius, double two_kappa_inv)
-    {
-        if (c1.left == c2.left)
-        {
-            return false;
-        }
-        if (c1.forward == c2.forward)
-        {
-            return false;
-        }
-        return distance >= 2 * radius - two_kappa_inv;
-    }
-
-    inline bool TeSTcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                               double radius_sin_mu, double kappa_inv)
-    {
-        if (c1.left != c2.left)
-        {
-            return false;
-        }
-        if (c1.forward == c2.forward)
-        {
-            return false;
-        }
-        return distance >= 2 * radius_sin_mu - kappa_inv;
+        return (distance <= upper_bound) && (distance >= lower_bound);
     }
 
     inline bool TTcTT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                              double four_radius)
+                              double upper_bound)
     {
-        if (c1.left != c2.left)
+        if (c1.left == c2.left)
         {
             return false;
         }
@@ -309,13 +284,13 @@ namespace path_helpers
         {
             return false;
         }
-        return distance <= four_radius;
+        return distance <= upper_bound;
     }
 
     inline bool TcTTcT_exists(double distance, const HC_CC_Circle& c1, const HC_CC_Circle& c2,
-                               double two_kappa_inv, double two_radius)
+                               double upper_bound, double lower_bound)
     {
-        if (c1.left != c2.left)
+        if (c1.left == c2.left)
         {
             return false;
         }
@@ -323,7 +298,7 @@ namespace path_helpers
         {
             return false;
         }
-        return distance <= 2 * two_kappa_inv + two_radius;
+        return (distance <= upper_bound) && (distance >= lower_bound);
     }
 
 } // namespace path_helpers
