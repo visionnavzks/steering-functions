@@ -5,12 +5,12 @@ namespace steering_refactor
 {
 
 constexpr double kPi = 3.14159265358979323846;
-constexpr double kTwoPi = 6.28318530717958647692;
+constexpr double kTwoPi = 2.0 * kPi;
 
 // Normalize any angle to [0, 2*pi)
 double normalize_zero_to_two_pi(double angle);
 
-// Normalize any angle to [-pi, pi]
+// Normalize any angle to [-pi, pi] (both endpoints may occur)
 double normalize_minus_pi_to_pi(double angle);
 
 // Cartesian distance between two 2D points
