@@ -40,24 +40,17 @@ namespace steering
 
         /** \brief Virtual function that returns controls of the shortest path from state1 to state2
          */
-        virtual std::vector<Control> get_controls(const State& state1,
-                                                  const State& state2) const = 0;
+        std::vector<Control> get_controls(const State& state1,
+                                          const State& state2) const override = 0;
 
-        /** \brief Returns path from state1 to state2 */
-        inline std::vector<State> get_path(const State& state1, const State& state2);
+        /** \brief Returns path from state1 to state2.
+         *  Overrides base to filter out negligibly small control segments. */
         std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls);
+        get_path(const State& state1, const State& state2, std::vector<Control>& controls) override;
 
         /** \brief Returns path including covariances from state1 to state2 */
         std::vector<State_With_Covariance>
         get_path_with_covariance(const State_With_Covariance& state1, const State& state2) const;
-
-        /** \brief Returns integrated states given a start state and controls */
-        std::vector<State> integrate(const State&                state,
-                                     const std::vector<Control>& controls) const;
-        std::vector<State> integrate(const State&                state,
-                                     const std::vector<Control>& controls,
-                                     double                      discretization_) const;
 
         /** \brief Returns integrated states including covariance given a start state and controls
          */
@@ -65,24 +58,12 @@ namespace steering
         integrate_with_covariance(const State_With_Covariance& state,
                                   const std::vector<Control>&  controls) const;
 
-        /** \brief Returns interpolated state at distance t in [0,1] (percentage of total path
-         * length) */
-        State interpolate(const State& state, const std::vector<Control>& controls, double t) const;
-
         std::vector<std::vector<Control>> get_all_controls(const State& state1,
                                                            const State& state2) const override;
-
-        /** \brief Returns integrated state given a start state, a control, and an integration step
-         */
-        inline State
-        integrate_ODE(const State& state, const Control& control, double integration_step) const;
 
     protected:
         /** \brief Curvature, sharpness of clothoid */
         double kappa_, sigma_;
-
-        /** \brief Discretization of path */
-        double discretization_;
 
         /** \brief Parameters of a hc-/cc-circle */
         HC_CC_Circle_Param hc_cc_circle_param_;

@@ -27,7 +27,7 @@ namespace steering
 {
 
     HC_CC_State_Space::HC_CC_State_Space(double kappa, double sigma, double discretization)
-        : kappa_(kappa), sigma_(sigma), discretization_(discretization)
+        : BaseStateSpace(discretization), kappa_(kappa), sigma_(sigma)
     {
         // assert positive inputs
         assert(kappa > 0.0 && sigma > 0.0 && discretization > 0.0);
@@ -75,7 +75,7 @@ namespace steering
 
         for (auto& control : un_filtered_controls)
         {
-            if (abs(control.delta_s) > 1e-6)
+            if (fabs(control.delta_s) > 1e-6)
             {
                 controls.push_back(control);
             }
@@ -90,73 +90,6 @@ namespace steering
     {
         vector<Control> controls = get_controls(state1.state, state2);
         return integrate_with_covariance(state1, controls);
-    }
-
-    vector<State> HC_CC_State_Space::integrate(const State&           state,
-                                               const vector<Control>& controls) const
-    {
-        return integrate(state, controls, discretization_);
-    }
-
-    vector<State> HC_CC_State_Space::integrate(const State&           state,
-                                               const vector<Control>& controls,
-                                               double                 discretization_) const
-    {
-        vector<State> path;
-        if (controls.size() < 1)
-        {
-            return path;
-        }
-
-        State state_curr{}, state_next;
-        // reserve capacity of path
-        int n_states(0);
-        for (const auto& control : controls)
-        {
-            double abs_delta_s(fabs(control.delta_s));
-            n_states += ceil(abs_delta_s / discretization_);
-        }
-        path.reserve(n_states + 13);
-        // push back first state
-        state_curr.x     = state.x;
-        state_curr.y     = state.y;
-        state_curr.theta = state.theta;
-        state_curr.kappa = controls.front().kappa;
-        state_curr.sigma = controls.front().sigma;
-        state_curr.d     = sgn(controls.front().delta_s);
-        path.push_back(state_curr);
-
-        for (const auto& control : controls)
-        {
-            double delta_s(control.delta_s);
-            double abs_delta_s(fabs(delta_s));
-            double kappa(control.kappa);
-            double s_seg(0.0);
-            double integration_step(0.0);
-
-            int    n              = max(2.0, ceil(abs_delta_s / discretization_));
-            double discretization = abs_delta_s / n;
-            assert(discretization > 0);
-
-            for (int i = 0; i < n; ++i)
-            {
-                // get integration step
-                s_seg += discretization;
-                if (s_seg > abs_delta_s)
-                {
-                    integration_step = discretization - (s_seg - abs_delta_s);
-                    s_seg            = abs_delta_s;
-                }
-                else
-                {
-                    integration_step = discretization;
-                }
-                state_next = integrate_ODE(state_curr, control, integration_step);
-                path.push_back(state_next);
-                state_curr = state_next;
-            }
-        }
-        return path;
     }
 
     vector<State_With_Covariance>
@@ -216,7 +149,7 @@ namespace steering
                     integration_step = discretization_;
                 }
                 // predict
-                state_pred.state = integrate_ODE(state_curr.state, control, integration_step);
+                state_pred.state = BaseStateSpace::integrate_ODE(state_curr.state, control, integration_step);
                 ekf_.predict(state_curr, control, integration_step, state_pred);
                 // update
                 state_next.state = state_pred.state;
@@ -235,109 +168,13 @@ namespace steering
         return path_with_covariance;
     }
 
-    State HC_CC_State_Space::interpolate(const State&           state,
-                                         const vector<Control>& controls,
-                                         double                 t) const
-    {
-        State state_curr{state}, state_inter{state};
-
-        // get arc length at t
-        double s_path(0.0);
-        double s_inter(0.0);
-        for (const auto& control : controls)
-        {
-            s_path += fabs(control.delta_s);
-        }
-        t       = min(max(t, 0.0), 1.0);
-        s_inter = t * s_path;
-
-        double s(0.0);
-
-        for (const auto& control : controls)
-        {
-            double delta_s(control.delta_s);
-            double abs_delta_s(fabs(delta_s));
-
-            if (s_inter - s > abs_delta_s)
-            {
-                state_curr = integrate_ODE(state_curr, control, abs_delta_s);
-                s += abs_delta_s;
-            }
-            else
-            {
-                state_inter = integrate_ODE(state_curr, control, s_inter - s);
-                break;
-            }
-        }
-        return state_inter;
-    }
-
     std::vector<std::vector<Control>> HC_CC_State_Space::get_all_controls(const State& state1,
                                                                           const State& state2) const
     {
-        // TODO Not implemented yet;
         std::vector<std::vector<Control>> all_controls;
         auto                              control = get_controls(state1, state2);
         all_controls.push_back(control);
-
         return all_controls;
-    }
-
-    inline State HC_CC_State_Space::integrate_ODE(const State&   state,
-                                                  const Control& control,
-                                                  double         integration_step) const
-    {
-        State  state_next = {};
-        double kappa(control.kappa);
-        double sigma(control.sigma);
-        double d(sgn(control.delta_s));
-        if (fabs(sigma) > get_epsilon())
-        {
-            end_of_clothoid(state.x,
-                            state.y,
-                            state.theta,
-                            state.kappa,
-                            sigma,
-                            d,
-                            integration_step,
-                            &state_next.x,
-                            &state_next.y,
-                            &state_next.theta,
-                            &state_next.kappa);
-            state_next.sigma = sigma;
-        }
-        else
-        {
-            if (fabs(kappa) > get_epsilon())
-            {
-                end_of_circular_arc(state.x,
-                                    state.y,
-                                    state.theta,
-                                    kappa,
-                                    d,
-                                    integration_step,
-                                    &state_next.x,
-                                    &state_next.y,
-                                    &state_next.theta);
-                state_next.kappa = kappa;
-                // state_next.sigma = 0.0;
-            }
-            else
-            {
-                end_of_straight_line(state.x,
-                                     state.y,
-                                     state.theta,
-                                     d,
-                                     integration_step,
-                                     &state_next.x,
-                                     &state_next.y);
-                state_next.theta = state.theta;
-                // state_next.kappa = state.kappa;
-            }
-        }
-        state_next.d = d;
-        state_next.s = state.s + integration_step;
-        return state_next;
     }
 
 } // namespace steering
