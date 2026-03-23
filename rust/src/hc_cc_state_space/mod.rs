@@ -17,10 +17,19 @@
 
 pub mod configuration;
 pub mod hc_cc_circle;
+pub mod hc_cc_state_space;
+pub mod paths;
 
 pub use configuration::{
     configuration_aligned, configuration_distance, configuration_equal, Configuration,
 };
 pub use hc_cc_circle::{
     center_distance, configuration_on_hc_cc_circle, HcCcCircle, HcCcCircleParam,
+};
+pub use hc_cc_state_space::HcCcStateSpace;
+pub use paths::{
+    cc_default_controls, cc_elementary_controls, cc_turn_controls, empty_controls,
+    hc_turn_controls, reverse_control, rs_turn_controls, state_equal, straight_controls,
+    subtract_control, CcDubinsPath, CcDubinsPathType, HcCcRsPath, HcCcRsPathType,
+    NB_CC_DUBINS_PATHS, NB_HC_CC_RS_PATHS,
 };
