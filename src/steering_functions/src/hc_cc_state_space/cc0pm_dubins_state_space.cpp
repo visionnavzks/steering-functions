@@ -29,6 +29,7 @@
 #include <limits>
 
 #include "steering_functions/hc_cc_state_space/configuration.hpp"
+#include "steering_functions/hc_cc_state_space/hc_cc_path_helpers.hpp"
 #include "steering_functions/utilities/utilities.hpp"
 
 using namespace std;
@@ -50,47 +51,13 @@ namespace steering
         // ##### TT ###################################################################
         bool TT_exists(const HC_CC_Circle& c1, const HC_CC_Circle& c2) const
         {
-            if (c1.left == c2.left)
-            {
-                return false;
-            }
-            if (c1.forward == c2.forward)
-            {
-                return false;
-            }
-            return fabs(distance - 2 * c1.radius) < get_epsilon();
+            return path_helpers::TT_exists(distance, c1, c2, c1.radius);
         }
 
         void
         TT_tangent_circles(const HC_CC_Circle& c1, const HC_CC_Circle& c2, Configuration** q) const
         {
-            double x     = (c1.xc + c2.xc) / 2;
-            double y     = (c1.yc + c2.yc) / 2;
-            double angle = atan2(c2.yc - c1.yc, c2.xc - c1.xc);
-            double theta;
-            if (c1.left)
-            {
-                if (c1.forward)
-                {
-                    theta = angle + HALF_PI - c1.mu;
-                }
-                else
-                {
-                    theta = angle + HALF_PI + c1.mu;
-                }
-            }
-            else
-            {
-                if (c1.forward)
-                {
-                    theta = angle - HALF_PI + c1.mu;
-                }
-                else
-                {
-                    theta = angle - HALF_PI - c1.mu;
-                }
-            }
-            *q = new Configuration(x, y, theta, 0);
+            path_helpers::TT_tangent_circles(c1, c2, c1.mu, q);
         }
 
         double TT_path(const HC_CC_Circle& c1,
@@ -114,33 +81,17 @@ namespace steering
         // ##### TST ##################################################################
         bool TiST_exists(const HC_CC_Circle& c1, const HC_CC_Circle& c2) const
         {
-            if (c1.left == c2.left)
-            {
-                return false;
-            }
-            if (c1.forward == c2.forward)
-            {
-                return false;
-            }
-            return (distance >= 2 * c1.radius);
+            return path_helpers::TiST_exists(distance, c1, c2, c1.radius);
         }
 
         bool TeST_exists(const HC_CC_Circle& c1, const HC_CC_Circle& c2) const
         {
-            if (c1.left != c2.left)
-            {
-                return false;
-            }
-            if (c1.forward == c2.forward)
-            {
-                return false;
-            }
-            return (distance >= 2 * c1.radius * c1.sin_mu);
+            return path_helpers::TeST_exists(distance, c1, c2, c1.radius * c1.sin_mu);
         }
 
         bool TST_exists(const HC_CC_Circle& c1, const HC_CC_Circle& c2) const
         {
-            return TiST_exists(c1, c2) || TeST_exists(c1, c2);
+            return path_helpers::TST_exists(distance, c1, c2, c1.radius, c1.radius * c1.sin_mu);
         }
 
         void TiST_tangent_circles(const HC_CC_Circle& c1,
@@ -148,44 +99,7 @@ namespace steering
                                   Configuration**     q1,
                                   Configuration**     q2) const
         {
-            double distance = center_distance(c1, c2);
-            double angle    = atan2(c2.yc - c1.yc, c2.xc - c1.xc);
-            double alpha    = asin(2 * c1.radius * c1.cos_mu / distance);
-            double delta_x  = c1.radius * c1.sin_mu;
-            double delta_y  = c1.radius * c1.cos_mu;
-            double x, y, theta;
-            if (c1.left && c1.forward)
-            {
-                theta = angle + alpha;
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, -delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta, 0);
-            }
-            if (c1.left && !c1.forward)
-            {
-                theta = angle - alpha;
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta + PI, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, -delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta + PI, 0);
-            }
-            if (!c1.left && c1.forward)
-            {
-                theta = angle - alpha;
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, -delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta, 0);
-            }
-            if (!c1.left && !c1.forward)
-            {
-                theta = angle + alpha;
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, -delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta + PI, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta + PI, 0);
-            }
+            path_helpers::TiST_tangent_circles(c1, c2, c1.radius, c1.sin_mu, c1.cos_mu, q1, q2);
         }
 
         void TeST_tangent_circles(const HC_CC_Circle& c1,
@@ -193,38 +107,7 @@ namespace steering
                                   Configuration**     q1,
                                   Configuration**     q2) const
         {
-            double delta_x = c1.radius * c1.sin_mu;
-            double delta_y = c1.radius * c1.cos_mu;
-            double theta   = atan2(c2.yc - c1.yc, c2.xc - c1.xc);
-            double x, y;
-            if (c1.left && c1.forward)
-            {
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, -delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, -delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta, 0);
-            }
-            if (c1.left && !c1.forward)
-            {
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta + PI, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta + PI, 0);
-            }
-            if (!c1.left && c1.forward)
-            {
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta, 0);
-            }
-            if (!c1.left && !c1.forward)
-            {
-                global_frame_change(c1.xc, c1.yc, theta, delta_x, -delta_y, &x, &y);
-                *q1 = new Configuration(x, y, theta + PI, 0);
-                global_frame_change(c2.xc, c2.yc, theta, -delta_x, -delta_y, &x, &y);
-                *q2 = new Configuration(x, y, theta + PI, 0);
-            }
+            path_helpers::TeST_tangent_circles(c1, c2, c1.radius, c1.sin_mu, c1.cos_mu, q1, q2);
         }
 
         double TiST_path(const HC_CC_Circle& c1,
@@ -285,15 +168,7 @@ namespace steering
         // ##### TTT ##################################################################
         bool TTT_exists(const HC_CC_Circle& c1, const HC_CC_Circle& c2) const
         {
-            if (c1.left != c2.left)
-            {
-                return false;
-            }
-            if (c1.forward == c2.forward)
-            {
-                return false;
-            }
-            return distance <= 4 * c1.radius;
+            return path_helpers::TTT_exists(distance, c1, c2, c1.radius);
         }
 
         void TTT_tangent_circles(const HC_CC_Circle& c1,
