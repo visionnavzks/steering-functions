@@ -233,10 +233,8 @@ impl HcCcCircle {
 
     /// Length of a Reeds-Shepp turn to reach configuration `q`.
     pub fn rs_turn_length(&self, q: &Configuration) -> f64 {
-        debug_assert!(
-            (self.param.kappa.abs() - q.kappa.abs()).abs() < get_epsilon()
-                && (self.param.sigma.abs() - f64::MAX).abs() < get_epsilon()
-        );
+        debug_assert!((self.param.kappa.abs() - q.kappa.abs()).abs() < get_epsilon());
+        debug_assert!(self.param.sigma.abs() == f64::MAX);
         let delta = self.deflection(q);
         (self.param.kappa_inv * self.rs_circular_deflection(delta)).abs()
     }
@@ -279,6 +277,9 @@ impl HcCcCircle {
     /// Returns `Some(sigma0)` if the elementary path exists, `None` otherwise.
     pub fn cc_elementary_sharpness(&self, q: &Configuration, delta: f64) -> Option<f64> {
         let distance = point_distance(self.start.x, self.start.y, q.x, q.y);
+        // Upper bound on delta for which an elementary CC path exists (see
+        // A. Scheuer and T. Fraichard, "Continuous-Curvature Path Planning
+        // for Car-Like Vehicles," IEEE/RSJ IROS, 1997).
         if delta < 4.5948 && distance > get_epsilon() {
             let mut sigma0 = 4.0 * PI * self.d1(0.5 * delta).powi(2) / distance.powi(2);
             if !self.left {
