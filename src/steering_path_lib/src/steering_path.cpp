@@ -1,7 +1,7 @@
 #include "steering_path_lib/steering_path.h"
 
-#include "steering_path_lib/path_integrator.h"
 #include "steering_functions/all_in_one.hpp"
+
 namespace steering
 {
 
@@ -72,50 +72,32 @@ namespace steering
         }
     }
 
-    std::vector<std::vector<Control>> SteeringPath::computeControlSequences(
-        const State& state_start, const State& state_goal, bool use_shortest_path) const
+    // --- Optimal (shortest) path ---
+
+    std::vector<Control> SteeringPath::computeShortestControlSequence(const State& start,
+                                                                      const State& goal) const
     {
-        if (!base_state_space_)
-        {
-            throw std::runtime_error("State space not initialized");
-        }
-
-        if (use_shortest_path)
-        {
-            std::vector<Control> controls;
-            // For shortest path, compute single optimal trajectory
-            base_state_space_->get_path(state_start, state_goal, controls);
-            return {controls};
-        }
-
-        // Compute all possible control sequences between states
-        return base_state_space_->get_all_controls(state_start, state_goal);
+        return base_state_space_->get_controls(start, goal);
     }
 
-    std::vector<std::vector<State>> SteeringPath::computeAllPaths(const State& state_start,
-                                                                  const State& state_goal,
-                                                                  bool use_shortest_path) const
+    std::vector<State> SteeringPath::computeShortestPath(const State& start,
+                                                         const State& goal) const
     {
-        if (!base_state_space_)
-        {
-            throw std::runtime_error("State space not initialized");
-        }
+        return base_state_space_->get_path(start, goal);
+    }
 
-        // Get all possible control sequences
-        auto control_sequences =
-            computeControlSequences(state_start, state_goal, use_shortest_path);
+    // --- All paths ---
 
-        // Generate discretized paths for each control sequence
-        std::vector<std::vector<State>> all_paths;
-        all_paths.reserve(control_sequences.size());
+    std::vector<std::vector<Control>>
+    SteeringPath::computeAllControlSequences(const State& start, const State& goal) const
+    {
+        return base_state_space_->get_all_controls(start, goal);
+    }
 
-        for (const auto& controls : control_sequences)
-        {
-            all_paths.push_back(
-                PathIntegrator::generateDiscretizedPath(state_start, controls, discretization_));
-        }
-
-        return all_paths;
+    std::vector<std::vector<State>> SteeringPath::computeAllPaths(const State& start,
+                                                                   const State& goal) const
+    {
+        return base_state_space_->get_all_paths(start, goal);
     }
 
 } // namespace steering

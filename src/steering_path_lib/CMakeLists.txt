@@ -14,7 +14,6 @@ target_include_directories(steering_path_lib
 target_sources(steering_path_lib
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_path.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/path_integrator.cpp
 )
 
 # Link against required dependencies
