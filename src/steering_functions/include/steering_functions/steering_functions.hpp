@@ -207,7 +207,10 @@ namespace steering
                                                                    const State& state2) const = 0;
 
     protected:
-        explicit BaseStateSpace(double discretization = 0.1) : discretization_(discretization) {}
+        explicit BaseStateSpace(double discretization = 0.1) : discretization_(discretization)
+        {
+            assert(discretization > 0.0);
+        }
         BaseStateSpace(const BaseStateSpace&)            = default;
         BaseStateSpace& operator=(const BaseStateSpace&) = default;
 
