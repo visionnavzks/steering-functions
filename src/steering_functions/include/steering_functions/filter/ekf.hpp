@@ -24,10 +24,10 @@
 namespace steering
 {
 
-    typedef Eigen::Matrix<double, 2, 2> Matrix2d;
-    typedef Eigen::Matrix<double, 3, 3> Matrix3d;
-    typedef Eigen::Matrix<double, 3, 2> Matrix32d;
-    typedef Eigen::Matrix<double, 2, 3> Matrix23d;
+    using Matrix2d  = Eigen::Matrix<double, 2, 2>;
+    using Matrix3d  = Eigen::Matrix<double, 3, 3>;
+    using Matrix32d = Eigen::Matrix<double, 3, 2>;
+    using Matrix23d = Eigen::Matrix<double, 2, 3>;
 
     class EKF
     {

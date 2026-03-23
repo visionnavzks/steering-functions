@@ -24,10 +24,7 @@
 namespace steering
 {
 
-    EKF::EKF()
-    {
-        I_ = Matrix3d::Identity();
-    }
+    EKF::EKF() : I_(Matrix3d::Identity()) {}
 
     void EKF::set_parameters(const Motion_Noise&      motion_noise,
                              const Measurement_Noise& measurement_noise,

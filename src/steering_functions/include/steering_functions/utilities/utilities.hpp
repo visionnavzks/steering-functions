@@ -25,28 +25,34 @@
 
 #pragma once
 
-#include "fresnel.data"
+#include <algorithm>
+#include <cmath>
 
-#define PI              3.1415926535897932384
-#define HALF_PI         1.5707963267948966192
-#define TWO_PI          6.2831853071795864770
-#define SQRT_PI         1.7724538509055160273
-#define SQRT_PI_INV     0.56418958354775628695
-#define SQRT_TWO_PI_INV 0.39894228040143267794
+#include "fresnel.data"
 
 namespace steering
 {
 
-    const double epsilon = 1e-4;
+    constexpr double PI              = 3.1415926535897932384;
+    constexpr double HALF_PI         = 1.5707963267948966192;
+    constexpr double TWO_PI          = 6.2831853071795864770;
+    constexpr double SQRT_PI         = 1.7724538509055160273;
+    constexpr double SQRT_PI_INV     = 0.56418958354775628695;
+    constexpr double SQRT_TWO_PI_INV = 0.39894228040143267794;
+    constexpr double epsilon         = 1e-4;
 
     /** \brief Return value of epsilon */
-    double get_epsilon();
+    inline double get_epsilon() { return epsilon; }
 
     /** \brief Return sign of a number */
-    double sgn(double x);
+    inline double sgn(double x) { return (x < 0) ? -1.0 : 1.0; }
 
     /** \brief Cartesian distance between two points */
-    double point_distance(double x1, double y1, double x2, double y2);
+    inline double point_distance(double x1, double y1, double x2, double y2)
+    {
+        double dx = x2 - x1, dy = y2 - y1;
+        return std::sqrt(dx * dx + dy * dy);
+    }
 
     /** \brief Computation of a point's polar coordinates */
     void polar(double x, double y, double& r, double& theta);
@@ -62,13 +68,7 @@ namespace steering
         */
     void fresnel(double s, double& S_f, double& C_f);
 
-    /** \brief Computation of the end point on a clothoid
-        x_i, y_i, theta_i, kappa_i: initial configuration
-        sigma: sharpness of clothoid
-        direction: driving direction {-1.0, 1.0}
-        length: length of clothoid (positive)
-        x_f, y_f, theta_f, kappa_f: final configuration on clothoid
-        */
+    /** \brief Computation of the end point on a clothoid */
     void end_of_clothoid(double  x_i,
                          double  y_i,
                          double  theta_i,
@@ -81,13 +81,7 @@ namespace steering
                          double* theta_f,
                          double* kappa_f);
 
-    /** \brief Computation of the end point on a circular arc
-        x_i, y_i, theta_i: initial configuration
-        kappa: curvature of circular arc
-        direction: driving direction {-1.0, 1.0}
-        length: arc length (positive)
-        x_f, y_f, theta_f: final configuration on circular arc
-        */
+    /** \brief Computation of the end point on a circular arc */
     void end_of_circular_arc(double  x_i,
                              double  y_i,
                              double  theta_i,
@@ -98,13 +92,7 @@ namespace steering
                              double* y_f,
                              double* theta_f);
 
-    /** \brief Computation of the end point on a straight line
-        x_i, y_i: initial configuration
-        theta: angle of straight line
-        direction: driving direction {-1.0, 1.0}
-        length: line length (positive)
-        x_f, y_f: final configuration on straight line
-        */
+    /** \brief Computation of the end point on a straight line */
     void end_of_straight_line(double  x_i,
                               double  y_i,
                               double  theta,
@@ -132,13 +120,21 @@ namespace steering
                             double* local_y);
 
     /** \brief Find index with minimal value in double array */
-    int array_index_min(double array[], int size);
+    inline int array_index_min(double array[], int size)
+    {
+        return static_cast<int>(std::min_element(array, array + size) - array);
+    }
 
     /** \brief Initialize an array with a given value */
-    void double_array_init(double array[], int size, double value);
+    inline void double_array_init(double array[], int size, double value)
+    {
+        std::fill(array, array + size, value);
+    }
 
     /** \brief Initialize an array with nullptr */
-    void pointer_array_init(void* array[], int size);
+    inline void pointer_array_init(void* array[], int size)
+    {
+        std::fill(array, array + size, nullptr);
+    }
 
 } // namespace steering
-

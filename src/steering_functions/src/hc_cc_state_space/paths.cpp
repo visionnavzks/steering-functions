@@ -42,12 +42,8 @@ namespace steering
                double               _kappa,
                double               _sigma,
                double               _length)
+        : start(_start), end(_end), kappa(_kappa), sigma(_sigma), length(_length)
     {
-        start  = _start;
-        end    = _end;
-        kappa  = _kappa;
-        sigma  = _sigma;
-        length = _length;
     }
 
     CC_Dubins_Path::CC_Dubins_Path(const Configuration& _start,
@@ -65,16 +61,10 @@ namespace steering
                                    HC_CC_Circle*        _ci2,
                                    double               _length)
         : Path(_start, _end, _kappa, _sigma, _length)
+        , type(_type)
+        , qi1(_qi1), qi2(_qi2), qi3(_qi3), qi4(_qi4)
+        , cstart(_cstart), cend(_cend), ci1(_ci1), ci2(_ci2)
     {
-        type   = _type;
-        qi1    = _qi1;
-        qi2    = _qi2;
-        qi3    = _qi3;
-        qi4    = _qi4;
-        cstart = _cstart;
-        cend   = _cend;
-        ci1    = _ci1;
-        ci2    = _ci2;
     }
 
     CC_Dubins_Path::~CC_Dubins_Path()
@@ -166,16 +156,10 @@ namespace steering
                                  HC_CC_Circle*        _ci2,
                                  double               _length)
         : Path(_start, _end, _kappa, _sigma, _length)
+        , type(_type)
+        , qi1(_qi1), qi2(_qi2), qi3(_qi3), qi4(_qi4)
+        , cstart(_cstart), cend(_cend), ci1(_ci1), ci2(_ci2)
     {
-        type   = _type;
-        qi1    = _qi1;
-        qi2    = _qi2;
-        qi3    = _qi3;
-        qi4    = _qi4;
-        cstart = _cstart;
-        cend   = _cend;
-        ci1    = _ci1;
-        ci2    = _ci2;
     }
 
     HC_CC_RS_Path::~HC_CC_RS_Path()
@@ -359,7 +343,6 @@ namespace steering
         arc.kappa   = c.kappa;
         arc.sigma   = 0.0;
         controls.push_back(arc);
-        return;
     }
 
     void hc_turn_controls(const HC_CC_Circle&  c,
@@ -394,7 +377,6 @@ namespace steering
             clothoid.sigma   = -c.sigma;
             controls.push_back(clothoid);
         }
-        return;
     }
 
     bool cc_elementary_controls(const HC_CC_Circle&  c,
@@ -449,7 +431,6 @@ namespace steering
         clothoid2.kappa   = c.kappa;
         clothoid2.sigma   = -c.sigma;
         controls.push_back(clothoid2);
-        return;
     }
 
     void cc_turn_controls(const HC_CC_Circle&  c,

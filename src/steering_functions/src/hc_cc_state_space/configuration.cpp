@@ -36,11 +36,8 @@ namespace steering
 {
 
     Configuration::Configuration(double _x, double _y, double _theta, double _kappa)
+        : x(_x), y(_y), theta(twopify(_theta)), kappa(_kappa)
     {
-        x     = _x;
-        y     = _y;
-        theta = twopify(_theta);
-        kappa = _kappa;
     }
 
     void Configuration::print(bool eol) const
