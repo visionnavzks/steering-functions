@@ -32,3 +32,12 @@ Useful CMake options:
 - `include/steering_state/state.h`: shared public `State` type used by both libraries
 - `src/steering_functions`: steering function implementations and unit tests
 - `src/steering_path_lib`: wrapper library for selecting planners and computing paths
+- `python/`: Python rewrite of the package interface with tests in `python/tests`
+
+## Python tests
+
+Run the Python rewrite tests from repository root:
+
+```bash
+python3 -m unittest discover -s python/tests
+```
