@@ -6,7 +6,7 @@ from .base import BaseStateSpace
 from .types import Control, State
 
 
-class _StraightLinePlanner(BaseStateSpace):
+class _SimplifiedPlanner(BaseStateSpace):
     def get_controls(self, state1: State, state2: State) -> List[Control]:
         dx = state2.x - state1.x
         dy = state2.y - state1.y
@@ -17,53 +17,53 @@ class _StraightLinePlanner(BaseStateSpace):
         return [self.get_controls(state1, state2)]
 
 
-class DubinsStateSpace(_StraightLinePlanner):
+class DubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CCDubinsStateSpace(_StraightLinePlanner):
+class CCDubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CC00DubinsStateSpace(_StraightLinePlanner):
+class CC00DubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CC0pmDubinsStateSpace(_StraightLinePlanner):
+class CC0pmDubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CCpm0DubinsStateSpace(_StraightLinePlanner):
+class CCpm0DubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CCpmpmDubinsStateSpace(_StraightLinePlanner):
+class CCpmpmDubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class ReedsSheppStateSpace(_StraightLinePlanner):
+class ReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CC00ReedsSheppStateSpace(_StraightLinePlanner):
+class CC00ReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HCReedsSheppStateSpace(_StraightLinePlanner):
+class HCReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HC00ReedsSheppStateSpace(_StraightLinePlanner):
+class HC00ReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HC0pmReedsSheppStateSpace(_StraightLinePlanner):
+class HC0pmReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HCpm0ReedsSheppStateSpace(_StraightLinePlanner):
+class HCpm0ReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HCpmpmReedsSheppStateSpace(_StraightLinePlanner):
+class HCpmpmReedsSheppStateSpace(_SimplifiedPlanner):
     pass

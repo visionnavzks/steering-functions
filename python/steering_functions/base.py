@@ -69,7 +69,7 @@ class BaseStateSpace(abc.ABC):
         for control in controls_list:
             seg_length = abs(control.delta_s)
             n = max(2, math.ceil(seg_length / step))
-            seg_step = seg_length / n if n > 0 else 0.0
+            seg_step = seg_length / n
             for _ in range(n):
                 curr = self.integrate_ode(curr, control, seg_step)
                 path.append(curr)
