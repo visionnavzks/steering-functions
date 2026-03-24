@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import replace
 import math
 from typing import Iterable, List
 
@@ -60,7 +61,7 @@ class BaseStateSpace(abc.ABC):
         if step <= 0.0:
             raise ValueError("discretization must be > 0")
 
-        curr = State(**state.__dict__)
+        curr = replace(state)
         curr.kappa = controls_list[0].kappa
         curr.sigma = controls_list[0].sigma
         curr.d = 1.0 if controls_list[0].delta_s >= 0 else -1.0

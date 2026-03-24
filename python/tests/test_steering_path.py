@@ -23,6 +23,12 @@ class SteeringPathTest(unittest.TestCase):
         controls = planner.compute_shortest_control_sequence(start, goal)
         self.assertEqual(1, len(controls))
         self.assertAlmostEqual(5.0, controls[0].delta_s)
+        self.assertAlmostEqual(0.0, controls[0].kappa)
+        self.assertAlmostEqual(0.0, controls[0].sigma)
+
+    def test_constructor_rejects_none_path_type(self):
+        with self.assertRaises(ValueError):
+            SteeringPath(PathType.NONE, 1.0, 0.1, 0.1)
 
     def test_compute_shortest_path_contains_start(self):
         planner = SteeringPath(PathType.RS, 1.0, 1.0, 0.5)

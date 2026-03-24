@@ -36,6 +36,9 @@ class SteeringPath:
         self._base_state_space = self._create_planner()
 
     def _create_planner(self):
+        if self._path_type is PathType.NONE:
+            raise ValueError("PathType.NONE is not a valid planner type")
+
         mapping = {
             PathType.CC_DUBINS: CCDubinsStateSpace,
             PathType.CC00_DUBINS: CC00DubinsStateSpace,
@@ -50,7 +53,6 @@ class SteeringPath:
             PathType.HCPM0_RS: HCpm0ReedsSheppStateSpace,
             PathType.HCPMPM_RS: HCpmpmReedsSheppStateSpace,
             PathType.RS: ReedsSheppStateSpace,
-            PathType.NONE: ReedsSheppStateSpace,
         }
         return mapping[self._path_type](self._discretization)
 
