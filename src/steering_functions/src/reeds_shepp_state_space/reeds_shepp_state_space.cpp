@@ -699,14 +699,7 @@ namespace steering
         return all_controls;
     }
 
-    vector<State> Reeds_Shepp_State_Space::get_path(const State&          state1,
-                                                    const State&          state2,
-                                                    std::vector<Control>& controls)
-    {
-        // todo move this function to base_state_space;
-        controls = get_controls(state1, state2);
-        return integrate(state1, controls);
-    }
+
 
     vector<State_With_Covariance>
     Reeds_Shepp_State_Space::get_path_with_covariance(const State_With_Covariance& state1,

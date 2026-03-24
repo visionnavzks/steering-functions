@@ -67,22 +67,7 @@ namespace steering
         ekf_.set_parameters(motion_noise, measurement_noise, controller);
     }
 
-    vector<State> HC_CC_State_Space::get_path(const State&          state1,
-                                              const State&          state2,
-                                              std::vector<Control>& controls)
-    {
-        auto un_filtered_controls = get_controls(state1, state2);
 
-        for (auto& control : un_filtered_controls)
-        {
-            if (abs(control.delta_s) > 1e-6)
-            {
-                controls.push_back(control);
-            }
-        }
-
-        return integrate(state1, controls);
-    }
 
     vector<State_With_Covariance>
     HC_CC_State_Space::get_path_with_covariance(const State_With_Covariance& state1,
@@ -341,3 +326,19 @@ namespace steering
     }
 
 } // namespace steering
+    vector<State> HC_CC_State_Space::get_path(const State&          state1,
+                                              const State&          state2,
+                                              std::vector<Control>& controls)
+    {
+        auto un_filtered_controls = get_controls(state1, state2);
+
+        for (auto& control : un_filtered_controls)
+        {
+            if (abs(control.delta_s) > 1e-6)
+            {
+                controls.push_back(control);
+            }
+        }
+
+        return integrate(state1, controls, discretization_);
+    }

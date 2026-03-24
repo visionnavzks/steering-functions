@@ -122,7 +122,26 @@ namespace steering
          * @return Vector of states representing the path
          */
         virtual std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls) = 0;
+        get_path(const State& state1, const State& state2, std::vector<Control>& controls)
+        {
+            controls = get_controls(state1, state2);
+            return integrate(state1, controls, get_discretization());
+        }
+
+        /**
+         * @brief Returns controls of the shortest path from state1 to state2
+         * @param state1 Starting state
+         * @param state2 Goal state
+         * @return Vector of controls representing the shortest path
+         */
+        virtual std::vector<Control> get_controls(const State& state1,
+                                                  const State& state2) const = 0;
+
+        /**
+         * @brief Returns the discretization used for path integration
+         * @return Discretization step size
+         */
+        virtual double get_discretization() const = 0;
 
         /**
          * @brief Interpolate state along a path at given parameter

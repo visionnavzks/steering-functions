@@ -151,14 +151,14 @@ namespace steering
 
         /** \brief Returns controls of the shortest path from state1 to state2 with curvature =
          * kappa_ */
-        std::vector<Control> get_controls(const State& state1, const State& state2) const;
+        std::vector<Control> get_controls(const State& state1, const State& state2) const override;
 
         /** \brief Returns controls for pure reverse driving path from state1 to state2 
          * by swapping start/end points and reversing the path direction */
         std::vector<Control> get_controls_reverse(const State& state1, const State& state2) const;
 
         std::vector<std::vector<Control>> get_all_controls(const State& state1,
-                                                           const State& state2) const
+                                                           const State& state2) const override
         {
             std::vector<std::vector<Control>> all_controls;
             // Add forward driving path
@@ -171,8 +171,12 @@ namespace steering
         /** \brief Returns shortest path from state1 to state2 with curvature = kappa_ 
          * Automatically selects the shortest path regardless of driving direction */
         std::vector<State> get_path(const State& state1, const State& state2);
-        std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls_);
+
+        /** brief Returns the discretization used for path integration */
+        double get_discretization() const override
+        {
+            return discretization_;
+        }
 
         /** \brief Returns shortest path including covariances from state1 to state2 with curvature
          * = kappa_ */
@@ -185,7 +189,7 @@ namespace steering
                                      const std::vector<Control>& controls) const;
         std::vector<State> integrate(const State&                state,
                                      const std::vector<Control>& controls,
-                                     double                      discretization_) const;
+                                     double                      discretization_) const override;
 
         /** \brief Returns integrated states including covariance given a start state and controls
          * with curvature = kappa_ */
@@ -195,12 +199,12 @@ namespace steering
 
         /** \brief Returns interpolated state at distance t in [0,1] (percent of total path length
          * with curvature = kappa_) */
-        State interpolate(const State& state, const std::vector<Control>& controls, double t) const;
+        State interpolate(const State& state, const std::vector<Control>& controls, double t) const override;
 
         State interpolate(const State&                state,
                           const std::vector<Control>& controls,
                           double                      t,
-                          double                      discretization_) const;
+                          double                      discretization_) const override;
 
         std::vector<State> interpolate(const State&                state,
                                        const std::vector<Control>& controls,

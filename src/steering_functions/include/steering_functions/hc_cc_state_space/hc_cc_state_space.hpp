@@ -40,13 +40,19 @@ namespace steering
 
         /** \brief Virtual function that returns controls of the shortest path from state1 to state2
          */
-        virtual std::vector<Control> get_controls(const State& state1,
-                                                  const State& state2) const = 0;
+        std::vector<Control> get_controls(const State& state1,
+                                          const State& state2) const override = 0;
 
         /** \brief Returns path from state1 to state2 */
         inline std::vector<State> get_path(const State& state1, const State& state2);
         std::vector<State>
-        get_path(const State& state1, const State& state2, std::vector<Control>& controls);
+        get_path(const State& state1, const State& state2, std::vector<Control>& controls) override;
+
+        /** brief Returns the discretization used for path integration */
+        double get_discretization() const override
+        {
+            return discretization_;
+        }
 
         /** \brief Returns path including covariances from state1 to state2 */
         std::vector<State_With_Covariance>
@@ -57,7 +63,7 @@ namespace steering
                                      const std::vector<Control>& controls) const;
         std::vector<State> integrate(const State&                state,
                                      const std::vector<Control>& controls,
-                                     double                      discretization_) const;
+                                     double                      discretization_) const override;
 
         /** \brief Returns integrated states including covariance given a start state and controls
          */
@@ -67,7 +73,7 @@ namespace steering
 
         /** \brief Returns interpolated state at distance t in [0,1] (percentage of total path
          * length) */
-        State interpolate(const State& state, const std::vector<Control>& controls, double t) const;
+        State interpolate(const State& state, const std::vector<Control>& controls, double t) const override;
 
         std::vector<std::vector<Control>> get_all_controls(const State& state1,
                                                            const State& state2) const override;

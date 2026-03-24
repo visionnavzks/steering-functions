@@ -344,13 +344,7 @@ namespace steering
         return integrate(state1, controls);
     }
 
-    vector<State> Dubins_State_Space::get_path(const State&          state1,
-                                               const State&          state2,
-                                               std::vector<Control>& controls)
-    {
-        controls = get_controls(state1, state2);
-        return integrate(state1, controls);
-    }
+
 
     vector<State_With_Covariance>
     Dubins_State_Space::get_path_with_covariance(const State_With_Covariance& state1,
