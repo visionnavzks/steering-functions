@@ -112,6 +112,14 @@ double get_path_length(const vector<State>& path)
     return path_length;
 }
 
+double get_path_length(const vector<Control>& controls)
+{
+    return accumulate(controls.begin(),
+                      controls.end(),
+                      0.0,
+                      [](double sum, const Control& control) { return sum + fabs(control.delta_s); });
+}
+
 Configuration  start_config(0.0, 0.0, 0.0, 0.0);                // do not change
 vector<double> sigmas = get_linear_samples(0.02, 200.0, 1000);  // [1/m^2]
 vector<double> deltas = get_linear_samples(0.0, 2 * M_PI, 1e3); // [rad]
@@ -144,22 +152,14 @@ TEST(HC_CC_Circle, pathLength)
             vector<Control> reg_cc_controls;
             cc_turn_controls(reg_hc_cc_circle, cc_goal_config, true, reg_cc_controls);
             vector<State> reg_cc_path        = hc_cc_ss.integrate(start_state, reg_cc_controls);
-            double        reg_cc_path_length = accumulate(reg_cc_controls.begin(),
-                                                   reg_cc_controls.end(),
-                                                   0.0,
-                                                   [](double sum, const Control& control)
-                                                   { return sum + fabs(control.delta_s); });
+            double        reg_cc_path_length = get_path_length(reg_cc_controls);
             EXPECT_LT(fabs(reg_cc_path_length - get_path_length(reg_cc_path)), EPS_DISTANCE);
 
             // irregular cc-turn
             vector<Control> irreg_cc_controls;
             cc_turn_controls(irreg_hc_cc_circle, cc_goal_config, true, irreg_cc_controls);
             vector<State> irreg_cc_path        = hc_cc_ss.integrate(start_state, irreg_cc_controls);
-            double        irreg_cc_path_length = accumulate(irreg_cc_controls.begin(),
-                                                     irreg_cc_controls.end(),
-                                                     0.0,
-                                                     [](double sum, const Control& control)
-                                                     { return sum + fabs(control.delta_s); });
+            double        irreg_cc_path_length = get_path_length(irreg_cc_controls);
             EXPECT_LT(fabs(irreg_cc_path_length - get_path_length(irreg_cc_path)), EPS_DISTANCE);
 
             // hc-turn
@@ -169,22 +169,14 @@ TEST(HC_CC_Circle, pathLength)
             vector<Control> reg_hc_controls;
             hc_turn_controls(reg_hc_cc_circle, hc_goal_config, true, reg_hc_controls);
             vector<State> reg_hc_path        = hc_cc_ss.integrate(start_state, reg_hc_controls);
-            double        reg_hc_path_length = accumulate(reg_hc_controls.begin(),
-                                                   reg_hc_controls.end(),
-                                                   0.0,
-                                                   [](double sum, const Control& control)
-                                                   { return sum + fabs(control.delta_s); });
+            double        reg_hc_path_length = get_path_length(reg_hc_controls);
             EXPECT_LT(fabs(reg_hc_path_length - get_path_length(reg_hc_path)), EPS_DISTANCE);
 
             // irregular hc-turn
             vector<Control> irreg_hc_controls;
             hc_turn_controls(irreg_hc_cc_circle, hc_goal_config, true, irreg_hc_controls);
             vector<State> irreg_hc_path        = hc_cc_ss.integrate(start_state, irreg_hc_controls);
-            double        irreg_hc_path_length = accumulate(irreg_hc_controls.begin(),
-                                                     irreg_hc_controls.end(),
-                                                     0.0,
-                                                     [](double sum, const Control& control)
-                                                     { return sum + fabs(control.delta_s); });
+            double        irreg_hc_path_length = get_path_length(irreg_hc_controls);
             EXPECT_LT(fabs(irreg_hc_path_length - get_path_length(irreg_hc_path)), EPS_DISTANCE);
         }
     }
