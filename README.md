@@ -32,3 +32,4 @@ Useful CMake options:
 - `include/steering_state/state.h`: shared public `State` type used by both libraries
 - `src/steering_functions`: steering function implementations and unit tests
 - `src/steering_path_lib`: wrapper library for selecting planners and computing paths
+- `python`: pure-Python port of the public steering APIs in a separate package directory
