@@ -17,10 +17,10 @@
 
 #include <gtest/gtest.h>
 
-#include "steering_functions/hc_cc_state_space/configuration.hpp"
-#include "steering_functions/hc_cc_state_space/hc_cc_circle.hpp"
-#include "steering_functions/hc_cc_state_space/hc_cc_state_space.hpp"
-#include "steering_functions/hc_cc_state_space/paths.hpp"
+#include "steering_functions/hc_cc_core/configuration.hpp"
+#include "steering_functions/hc_cc_core/hc_cc_circle.hpp"
+#include "steering_functions/hc_cc_core/hc_cc_state_space.hpp"
+#include "steering_functions/hc_cc_core/paths.hpp"
 #include "steering_functions/steering_functions.hpp"
 #include "steering_functions/utilities/utilities.hpp"
 

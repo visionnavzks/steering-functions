@@ -1,4 +1,6 @@
-/*********************************************************************
+#pragma once
+
+#include "steering_functions/cc_dubins_state_space/cc_dubins_state_space.hpp"/*********************************************************************
  *  Copyright (c) 2017 Robert Bosch GmbH.
  *  All rights reserved.
  *

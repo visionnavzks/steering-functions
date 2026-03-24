@@ -103,7 +103,7 @@ and the following lines to your package's package.xml
 
 Now the steering functions can be used in your package by including the appropriate header, e.g.
 
-    #include "steering_functions/hc_cc_state_space/hc00_reeds_shepp_state_space.hpp"
+    #include "steering_functions/hc_reeds_shepp_state_space/hc00_reeds_shepp_state_space.hpp"
 
 
 ### Testing

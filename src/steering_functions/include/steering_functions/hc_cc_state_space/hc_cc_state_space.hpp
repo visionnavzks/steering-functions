@@ -1,4 +1,6 @@
-/*********************************************************************
+#pragma once
+
+#include "steering_functions/hc_cc_core/hc_cc_state_space.hpp"/*********************************************************************
  *  Copyright (c) 2017 Robert Bosch GmbH.
  *  All rights reserved.
  *

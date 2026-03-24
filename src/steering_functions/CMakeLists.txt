@@ -6,13 +6,19 @@ option(STEERING_FUNCTIONS_ENABLE_EXTENDED_TESTS
   "Run the upstream steering_functions integration test executable in ctest"
   OFF)
 
-file(GLOB SRC_HC_CC_SS src/hc_cc_state_space/*.cpp)
+file(GLOB SRC_HC_CC_CORE src/hc_cc_core/*.cpp)
+file(GLOB SRC_CC_DUBINS src/cc_dubins_state_space/*.cpp)
+file(GLOB SRC_CC_REEDS_SHEPP src/cc_reeds_shepp_state_space/*.cpp)
+file(GLOB SRC_HC_REEDS_SHEPP src/hc_reeds_shepp_state_space/*.cpp)
 set(SRC_FILES
     src/base_state_space.cpp
     src/dubins_state_space/dubins_state_space.cpp
     src/reeds_shepp_state_space/reeds_shepp_state_space.cpp
     src/utilities/utilities.cpp
-    ${SRC_HC_CC_SS})
+    ${SRC_HC_CC_CORE}
+    ${SRC_CC_DUBINS}
+    ${SRC_CC_REEDS_SHEPP}
+    ${SRC_HC_REEDS_SHEPP})
 
 add_library(steering_functions ${SRC_FILES})
 target_compile_features(steering_functions PUBLIC cxx_std_17)
