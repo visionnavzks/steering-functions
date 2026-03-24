@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steering Functions — Interactive Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; }
+
+    #layout { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 270px; min-width: 270px;
+      background: #161b22; border-right: 1px solid #30363d;
+      display: flex; flex-direction: column; overflow-y: auto;
+      padding: 14px 14px 20px;
+    }
+    #sidebar h1 { font-size: 1rem; font-weight: 700; color: #58a6ff; margin-bottom: 16px; letter-spacing: .03em; }
+    .section { margin-bottom: 18px; }
+    .section-title {
+      font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .08em; color: #8b949e; margin-bottom: 8px;
+    }
+    label { display: block; font-size: .8rem; color: #8b949e; margin-bottom: 3px; }
+    select, input[type=range] { width: 100%; }
+    select {
+      padding: 5px 8px; background: #21262d; border: 1px solid #30363d;
+      color: #c9d1d9; border-radius: 6px; font-size: .82rem; cursor: pointer;
+    }
+    select:focus { outline: none; border-color: #58a6ff; }
+    input[type=range] { accent-color: #58a6ff; cursor: pointer; margin-top: 2px; }
+    .range-row { display: flex; align-items: center; gap: 8px; }
+    .range-row input { flex: 1; }
+    .range-val { font-size: .78rem; color: #58a6ff; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* mode buttons */
+    .mode-group { display: flex; gap: 6px; margin-bottom: 6px; }
+    .mode-btn {
+      flex: 1; padding: 6px 0; border: 1px solid #30363d; background: #21262d;
+      color: #8b949e; border-radius: 6px; cursor: pointer; font-size: .8rem;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .mode-btn.active { background: #1f6feb; border-color: #388bfd; color: #fff; font-weight: 600; }
+    .mode-btn:hover:not(.active) { background: #30363d; color: #c9d1d9; }
+    .hint { font-size: .72rem; color: #6e7681; font-style: italic; line-height: 1.4; }
+
+    /* path info */
+    #path-info { flex: 1; }
+    .pi-empty { font-size: .8rem; color: #6e7681; font-style: italic; }
+    .pi-best { margin-bottom: 10px; }
+    .pi-name { font-size: 1.05rem; font-weight: 700; color: #3fb950; margin-bottom: 4px; }
+    .pi-length { font-size: .82rem; color: #c9d1d9; margin-bottom: 6px; }
+    .pi-segs { font-size: .76rem; color: #8b949e; line-height: 1.7; }
+    .seg-fwd  { color: #3fb950; }
+    .seg-bwd  { color: #f78166; }
+
+    .pi-divider { border: none; border-top: 1px solid #30363d; margin: 8px 0; }
+
+    .pi-all-title { font-size: .72rem; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .pi-all-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 3px 6px; border-radius: 4px; margin-bottom: 2px;
+      cursor: pointer; font-size: .76rem;
+    }
+    .pi-all-item:hover { background: #21262d; }
+    .pi-all-item.selected { background: #1f6feb33; }
+    .pi-all-name { font-weight: 600; color: #c9d1d9; }
+    .pi-all-len  { color: #8b949e; }
+
+    #reset-btn {
+      margin-top: auto; padding: 8px; background: #21262d; border: 1px solid #30363d;
+      color: #c9d1d9; border-radius: 6px; cursor: pointer; font-size: .82rem; width: 100%;
+    }
+    #reset-btn:hover { background: #30363d; }
+
+    /* ── Canvas ── */
+    #canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+    #canvas { display: block; cursor: crosshair; }
+
+    /* overlay tooltip */
+    #tooltip {
+      position: absolute; left: 12px; bottom: 12px;
+      background: #161b22cc; border: 1px solid #30363d; border-radius: 6px;
+      padding: 6px 10px; font-size: .72rem; color: #8b949e; pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body>
+<div id="layout">
+  <!-- ── Sidebar ── -->
+  <div id="sidebar">
+    <h1>⟳ Steering Functions</h1>
+
+    <div class="section">
+      <div class="section-title">Algorithm</div>
+      <select id="alg-select">
+        <option value="dubins">Dubins (forward only)</option>
+        <option value="rs">Reeds-Shepp (forward + backward)</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Turning Radius</div>
+      <div class="range-row">
+        <input type="range" id="radius-slider" min="20" max="250" value="80" step="1">
+        <span class="range-val" id="radius-display">80</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Display</div>
+      <label>Show paths</label>
+      <select id="show-select">
+        <option value="shortest">Shortest path only</option>
+        <option value="all">All candidate paths</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Placement Mode</div>
+      <div class="mode-group">
+        <button class="mode-btn active" id="mode-start-btn">▶ Start</button>
+        <button class="mode-btn"        id="mode-goal-btn" >⚑ Goal</button>
+      </div>
+      <p class="hint">Click canvas to place · drag to set heading</p>
+    </div>
+
+    <div class="section" style="flex:1; overflow-y:auto;">
+      <div class="section-title">Path Info</div>
+      <div id="path-info"><p class="pi-empty">Place start &amp; goal to compute path.</p></div>
+    </div>
+
+    <button id="reset-btn">↺ Reset</button>
+  </div>
+
+  <!-- ── Canvas ── -->
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div id="tooltip">Wheel to zoom · drag background to pan</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  MATH UTILS
+// ═══════════════════════════════════════════════════════════
+const TWO_PI  = 2 * Math.PI;
+const HALF_PI = Math.PI / 2;
+// Numerical tolerance matching the C++ source (RS_ZERO ≈ 10 * DBL_EPSILON).
+// Used as: value >= -RS_EPS  (must be non-negative up to floating-point noise)
+//      and: value <=  RS_EPS  (must be non-positive up to floating-point noise)
+const RS_EPS  = 1e-9;
+
+/** Map angle to [0, 2π) */
+function twopify(a) {
+  let v = a % TWO_PI;
+  if (v < 0) v += TWO_PI;
+  return v;
+}
+
+/** Map angle to (−π, π] */
+function pify(a) {
+  let v = a % TWO_PI;
+  if (v <= -Math.PI) v += TWO_PI;
+  else if (v > Math.PI) v -= TWO_PI;
+  return v;
+}
+
+/** Polar form: returns { r, theta } */
+function polar(x, y) {
+  return { r: Math.sqrt(x * x + y * y), theta: Math.atan2(y, x) };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DUBINS PATH   (ported 1-to-1 from the C++ source)
+// ═══════════════════════════════════════════════════════════
+// Path-segment type constants
+const DL = 1, DS = 2, DR = 3;  // DUBINS_LEFT, DUBINS_STRAIGHT, DUBINS_RIGHT
+
+// 6 canonical Dubins path types [type_idx][segment 0..2]
+const DUBINS_TYPE = [
+  [DL, DS, DL],  // 0  LSL
+  [DR, DS, DR],  // 1  RSR
+  [DR, DS, DL],  // 2  RSL
+  [DL, DS, DR],  // 3  LSR
+  [DR, DL, DR],  // 4  RLR
+  [DL, DR, DL],  // 5  LRL
+];
+const DUBINS_NAME = ['LSL','RSR','RSL','LSR','RLR','LRL'];
+
+function dubinsLSL(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = 2 + d * d - 2 * (ca * cb + sa * sb - d * (sa - sb));
+  if (tmp < -RS_EPS) return null;
+  const p     = Math.sqrt(Math.max(0, tmp));
+  const theta = Math.atan2(cb - ca, d + sa - sb);
+  const t     = twopify(-alpha + theta);
+  const q     = twopify(beta - theta);
+  return { typeIdx: 0, t, p, q };
+}
+function dubinsRSR(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = 2 + d * d - 2 * (ca * cb + sa * sb - d * (sb - sa));
+  if (tmp < -RS_EPS) return null;
+  const p     = Math.sqrt(Math.max(0, tmp));
+  const theta = Math.atan2(ca - cb, d - sa + sb);
+  const t     = twopify(alpha - theta);
+  const q     = twopify(-beta + theta);
+  return { typeIdx: 1, t, p, q };
+}
+function dubinsRSL(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = d * d - 2 + 2 * (ca * cb + sa * sb - d * (sa + sb));
+  if (tmp < -RS_EPS) return null;
+  const p     = Math.sqrt(Math.max(0, tmp));
+  const theta = Math.atan2(ca + cb, d - sa - sb) - Math.atan2(2, p);
+  const t     = twopify(alpha - theta);
+  const q     = twopify(beta - theta);
+  return { typeIdx: 2, t, p, q };
+}
+function dubinsLSR(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = -2 + d * d + 2 * (ca * cb + sa * sb + d * (sa + sb));
+  if (tmp < -RS_EPS) return null;
+  const p     = Math.sqrt(Math.max(0, tmp));
+  const theta = Math.atan2(-ca - cb, d + sa + sb) - Math.atan2(-2, p);
+  const t     = twopify(-alpha + theta);
+  const q     = twopify(-beta + theta);
+  return { typeIdx: 3, t, p, q };
+}
+function dubinsRLR(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = 0.125 * (6 - d * d + 2 * (ca * cb + sa * sb + d * (sa - sb)));
+  if (Math.abs(tmp) >= 1) return null;
+  const p     = TWO_PI - Math.acos(Math.min(1, Math.max(-1, tmp)));
+  const theta = Math.atan2(ca - cb, d - sa + sb);
+  const t     = twopify(alpha - theta + 0.5 * p);
+  const q     = twopify(alpha - beta - t + p);
+  return { typeIdx: 4, t, p, q };
+}
+function dubinsLRL(d, alpha, beta) {
+  const ca = Math.cos(alpha), sa = Math.sin(alpha), cb = Math.cos(beta), sb = Math.sin(beta);
+  const tmp = 0.125 * (6 - d * d + 2 * (ca * cb + sa * sb - d * (sa - sb)));
+  if (Math.abs(tmp) >= 1) return null;
+  const p     = TWO_PI - Math.acos(Math.min(1, Math.max(-1, tmp)));
+  const theta = Math.atan2(-ca + cb, d + sa - sb);
+  const t     = twopify(-alpha + theta + 0.5 * p);
+  const q     = twopify(beta - alpha - t + p);
+  return { typeIdx: 5, t, p, q };
+}
+
+/**
+ * Compute all Dubins paths from (x1,y1,th1) to (x2,y2,th2) with turning radius r.
+ * Returns array of path objects, sorted by total length.
+ */
+function computeDubins(x1, y1, th1, x2, y2, th2, r) {
+  const kappa = 1 / r;
+  const dx = x2 - x1, dy = y2 - y1;
+  const th  = Math.atan2(dy, dx);
+  const d   = Math.sqrt(dx * dx + dy * dy) * kappa;
+  const alpha = twopify(th1 - th);
+  const beta  = twopify(th2 - th);
+
+  const raw = [
+    dubinsLSL(d, alpha, beta),
+    dubinsRSR(d, alpha, beta),
+    dubinsRSL(d, alpha, beta),
+    dubinsLSR(d, alpha, beta),
+    dubinsRLR(d, alpha, beta),
+    dubinsLRL(d, alpha, beta),
+  ].filter(Boolean);
+
+  return raw.map(({ typeIdx, t, p, q }) => {
+    const segs = DUBINS_TYPE[typeIdx];
+    const lens  = [t, p, q];
+    const controls = [];
+    for (let i = 0; i < 3; i++) {
+      if (lens[i] < RS_EPS) continue;
+      const k = segs[i] === DL ? kappa : (segs[i] === DR ? -kappa : 0);
+      controls.push({ delta_s: r * lens[i], kappa: k });
+    }
+    return { name: DUBINS_NAME[typeIdx], total: (t + p + q) * r, controls };
+  }).sort((a, b) => a.total - b.total);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REEDS-SHEPP PATH   (ported 1-to-1 from the C++ source)
+// ═══════════════════════════════════════════════════════════
+const RS_NOP = 0, RS_L = 1, RS_S = 2, RS_R = 3;
+
+// 18 RS path-type families  [type_idx][segment 0..4]
+const RS_TYPE = [
+  [RS_L, RS_R, RS_L, RS_NOP, RS_NOP],       // 0   LRL
+  [RS_R, RS_L, RS_R, RS_NOP, RS_NOP],       // 1   RLR
+  [RS_L, RS_R, RS_L, RS_R,   RS_NOP],       // 2   LRLR
+  [RS_R, RS_L, RS_R, RS_L,   RS_NOP],       // 3   RLRL
+  [RS_L, RS_R, RS_S, RS_L,   RS_NOP],       // 4   LRSL
+  [RS_R, RS_L, RS_S, RS_R,   RS_NOP],       // 5   RLSR
+  [RS_L, RS_S, RS_R, RS_L,   RS_NOP],       // 6   LSRL
+  [RS_R, RS_S, RS_L, RS_R,   RS_NOP],       // 7   RSLR
+  [RS_L, RS_R, RS_S, RS_R,   RS_NOP],       // 8   LRSR
+  [RS_R, RS_L, RS_S, RS_L,   RS_NOP],       // 9   RLSL
+  [RS_R, RS_S, RS_R, RS_L,   RS_NOP],       // 10  RSRL
+  [RS_L, RS_S, RS_L, RS_R,   RS_NOP],       // 11  LSLR
+  [RS_L, RS_S, RS_R, RS_NOP, RS_NOP],       // 12  LSR
+  [RS_R, RS_S, RS_L, RS_NOP, RS_NOP],       // 13  RSL
+  [RS_L, RS_S, RS_L, RS_NOP, RS_NOP],       // 14  LSL
+  [RS_R, RS_S, RS_R, RS_NOP, RS_NOP],       // 15  RSR
+  [RS_L, RS_R, RS_S, RS_L,   RS_R],         // 16  LRSLR
+  [RS_R, RS_L, RS_S, RS_R,   RS_L],         // 17  RLSRL
+];
+
+function rsTypeName(typeIdx, lens) {
+  const letters = { [RS_L]: 'L', [RS_S]: 'S', [RS_R]: 'R', [RS_NOP]: '' };
+  return RS_TYPE[typeIdx].map((t, i) => {
+    if (t === RS_NOP) return '';
+    return letters[t] + (lens[i] >= 0 ? '+' : '-');
+  }).join('');
+}
+
+function tauOmega(u, v, xi, eta, phi) {
+  const delta = pify(u - v);
+  const A  = Math.sin(u) - Math.sin(delta);
+  const B  = Math.cos(u) - Math.cos(delta) - 1;
+  const t1 = Math.atan2(eta * A - xi * B, xi * A + eta * B);
+  const t2 = 2 * (Math.cos(delta) - Math.cos(v) - Math.cos(u)) + 3;
+  const tau   = (t2 < 0) ? pify(t1 + Math.PI) : pify(t1);
+  const omega = pify(tau - u + v - phi);
+  return { tau, omega };
+}
+
+// formula 8.1  L+S+L+
+function rsLpSpLp(x, y, phi) {
+  const xi = x - Math.sin(phi), eta = y - 1 + Math.cos(phi);
+  const { r: u, theta: t } = polar(xi, eta);
+  const v = pify(phi - t);
+  if (t >= -RS_EPS && v >= -RS_EPS) return { t, u, v };
+  return null;
+}
+// formula 8.2  L+S+R+
+function rsLpSpRp(x, y, phi) {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi);
+  const u1sq = xi * xi + eta * eta;
+  const t1   = Math.atan2(eta, xi);
+  if (u1sq < 4) return null;
+  const u = Math.sqrt(u1sq - 4);
+  const t = pify(t1 + Math.atan2(2, u));
+  const v = pify(t - phi);
+  if (t >= -RS_EPS && v >= -RS_EPS) return { t, u, v };
+  return null;
+}
+// formula 8.3  L+R-L  (also used for 8.4 with backwards trick)
+function rsLpRmL(x, y, phi) {
+  const xi = x - Math.sin(phi), eta = y - 1 + Math.cos(phi);
+  const { r: u1, theta } = polar(xi, eta);
+  if (u1 > 4) return null;
+  const u = -2 * Math.asin(0.25 * u1);
+  const t = pify(theta + 0.5 * u + Math.PI);
+  const v = pify(phi - t + u);
+  if (t >= -RS_EPS && u <= RS_EPS) return { t, u, v };
+  return null;
+}
+// formula 8.7  L+R+uL-uR-
+function rsLpRupLumRm(x, y, phi) {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi);
+  const rho = 0.25 * (2 + Math.sqrt(xi * xi + eta * eta));
+  if (rho > 1) return null;
+  const u = Math.acos(Math.min(1, Math.max(-1, rho)));
+  const { tau, omega } = tauOmega(u, -u, xi, eta, phi);
+  if (tau >= -RS_EPS && omega <= RS_EPS) return { t: tau, u, v: omega };
+  return null;
+}
+// formula 8.8  L+R-uL-uR+
+function rsLpRumLumRp(x, y, phi) {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi);
+  const rho = (20 - xi * xi - eta * eta) / 16;
+  if (rho < 0 || rho > 1) return null;
+  const u = -Math.acos(Math.min(1, Math.max(-1, rho)));
+  if (u < -0.5 * Math.PI) return null;
+  const { tau, omega } = tauOmega(u, u, xi, eta, phi);
+  if (tau >= -RS_EPS && omega >= -RS_EPS) return { t: tau, u, v: omega };
+  return null;
+}
+// formula 8.9  L+R-S-L-
+function rsLpRmSmLm(x, y, phi) {
+  const xi = x - Math.sin(phi), eta = y - 1 + Math.cos(phi);
+  const { r: rho, theta } = polar(xi, eta);
+  if (rho < 2) return null;
+  const r = Math.sqrt(rho * rho - 4);
+  const u = 2 - r;
+  const t = pify(theta + Math.atan2(r, -2));
+  const v = pify(phi - 0.5 * Math.PI - t);
+  if (t >= -RS_EPS && u <= RS_EPS && v <= RS_EPS) return { t, u, v };
+  return null;
+}
+// formula 8.10  L+R-S-R-
+function rsLpRmSmRm(x, y, phi) {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi);
+  const { r: rho, theta } = polar(-eta, xi);
+  if (rho < 2) return null;
+  const t = theta;
+  const u = 2 - rho;
+  const v = pify(t + 0.5 * Math.PI - phi);
+  if (t >= -RS_EPS && u <= RS_EPS && v <= RS_EPS) return { t, u, v };
+  return null;
+}
+// formula 8.11  L+R-SL-R+
+function rsLpRmSLmRp(x, y, phi) {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi);
+  const { r: rho, theta: _th } = polar(xi, eta);
+  if (rho < 2) return null;
+  const u = 4 - Math.sqrt(rho * rho - 4);
+  if (u > RS_EPS) return null;
+  const t = pify(Math.atan2((4 - u) * xi - 2 * eta, -2 * xi + (u - 4) * eta));
+  const v = pify(t - phi);
+  if (t >= -RS_EPS && v >= -RS_EPS) return { t, u, v };
+  return null;
+}
+
+/** Push a raw RS path record: { typeIdx, lens[5] } */
+function rsPath(arr, typeIdx, l0, l1, l2, l3 = 0, l4 = 0) {
+  arr.push({ typeIdx, lens: [l0, l1, l2, l3, l4] });
+}
+
+function collectCSC(x, y, phi, out) {
+  let r;
+  // LpSpLp → type 14 (LSL)
+  if ((r = rsLpSpLp( x,  y,  phi))) rsPath(out, 14,  r.t,  r.u,  r.v);
+  if ((r = rsLpSpLp(-x,  y, -phi))) rsPath(out, 14, -r.t, -r.u, -r.v);  // timeflip
+  if ((r = rsLpSpLp( x, -y, -phi))) rsPath(out, 15,  r.t,  r.u,  r.v);  // reflect → 15 (RSR)
+  if ((r = rsLpSpLp(-x, -y,  phi))) rsPath(out, 15, -r.t, -r.u, -r.v);  // tf+refl
+
+  // LpSpRp → type 12 (LSR)
+  if ((r = rsLpSpRp( x,  y,  phi))) rsPath(out, 12,  r.t,  r.u,  r.v);
+  if ((r = rsLpSpRp(-x,  y, -phi))) rsPath(out, 12, -r.t, -r.u, -r.v);
+  if ((r = rsLpSpRp( x, -y, -phi))) rsPath(out, 13,  r.t,  r.u,  r.v);  // reflect → 13 (RSL)
+  if ((r = rsLpSpRp(-x, -y,  phi))) rsPath(out, 13, -r.t, -r.u, -r.v);
+}
+
+function collectCCC(x, y, phi, out) {
+  let r;
+  // LpRmL → type 0 (LRL)
+  if ((r = rsLpRmL( x,  y,  phi))) rsPath(out, 0,  r.t,  r.u,  r.v);
+  if ((r = rsLpRmL(-x,  y, -phi))) rsPath(out, 0, -r.t, -r.u, -r.v);
+  if ((r = rsLpRmL( x, -y, -phi))) rsPath(out, 1,  r.t,  r.u,  r.v);  // reflect → 1 (RLR)
+  if ((r = rsLpRmL(-x, -y,  phi))) rsPath(out, 1, -r.t, -r.u, -r.v);
+
+  // backwards (reverse path from goal to start, then swap segment order)
+  const xb = x * Math.cos(phi) + y * Math.sin(phi);
+  const yb = x * Math.sin(phi) - y * Math.cos(phi);
+  if ((r = rsLpRmL( xb,  yb,  phi))) rsPath(out, 0,  r.v,  r.u,  r.t);
+  if ((r = rsLpRmL(-xb,  yb, -phi))) rsPath(out, 0, -r.v, -r.u, -r.t);
+  if ((r = rsLpRmL( xb, -yb, -phi))) rsPath(out, 1,  r.v,  r.u,  r.t);
+  if ((r = rsLpRmL(-xb, -yb,  phi))) rsPath(out, 1, -r.v, -r.u, -r.t);
+}
+
+function collectCCCC(x, y, phi, out) {
+  let r;
+  if ((r = rsLpRupLumRm( x,  y,  phi))) rsPath(out, 2,  r.t,  r.u, -r.u,  r.v);
+  if ((r = rsLpRupLumRm(-x,  y, -phi))) rsPath(out, 2, -r.t, -r.u,  r.u, -r.v);
+  if ((r = rsLpRupLumRm( x, -y, -phi))) rsPath(out, 3,  r.t,  r.u, -r.u,  r.v);
+  if ((r = rsLpRupLumRm(-x, -y,  phi))) rsPath(out, 3, -r.t, -r.u,  r.u, -r.v);
+
+  if ((r = rsLpRumLumRp( x,  y,  phi))) rsPath(out, 2,  r.t,  r.u,  r.u,  r.v);
+  if ((r = rsLpRumLumRp(-x,  y, -phi))) rsPath(out, 2, -r.t, -r.u, -r.u, -r.v);
+  if ((r = rsLpRumLumRp( x, -y, -phi))) rsPath(out, 3,  r.t,  r.u,  r.u,  r.v);
+  if ((r = rsLpRumLumRp(-x, -y,  phi))) rsPath(out, 3, -r.t, -r.u, -r.u, -r.v);
+}
+
+function collectCCSC(x, y, phi, out) {
+  let r;
+  const xb = x * Math.cos(phi) + y * Math.sin(phi);
+  const yb = x * Math.sin(phi) - y * Math.cos(phi);
+
+  // LpRmSmLm → type 4  (LRSL)
+  if ((r = rsLpRmSmLm( x,  y,  phi))) rsPath(out, 4,  r.t, -HALF_PI,  r.u,  r.v);
+  if ((r = rsLpRmSmLm(-x,  y, -phi))) rsPath(out, 4, -r.t,  HALF_PI, -r.u, -r.v);
+  if ((r = rsLpRmSmLm( x, -y, -phi))) rsPath(out, 5,  r.t, -HALF_PI,  r.u,  r.v);  // reflect → 5 (RLSR)
+  if ((r = rsLpRmSmLm(-x, -y,  phi))) rsPath(out, 5, -r.t,  HALF_PI, -r.u, -r.v);
+
+  // LpRmSmRm → type 8  (LRSR)
+  if ((r = rsLpRmSmRm( x,  y,  phi))) rsPath(out, 8,  r.t, -HALF_PI,  r.u,  r.v);
+  if ((r = rsLpRmSmRm(-x,  y, -phi))) rsPath(out, 8, -r.t,  HALF_PI, -r.u, -r.v);
+  if ((r = rsLpRmSmRm( x, -y, -phi))) rsPath(out, 9,  r.t, -HALF_PI,  r.u,  r.v);  // reflect → 9 (RLSL)
+  if ((r = rsLpRmSmRm(-x, -y,  phi))) rsPath(out, 9, -r.t,  HALF_PI, -r.u, -r.v);
+
+  // backwards (swap segment order: v,u,±HALF_PI,t with types 6,7,10,11)
+  if ((r = rsLpRmSmLm( xb,  yb,  phi))) rsPath(out,  6,  r.v,  r.u, -HALF_PI,  r.t);
+  if ((r = rsLpRmSmLm(-xb,  yb, -phi))) rsPath(out,  6, -r.v, -r.u,  HALF_PI, -r.t);
+  if ((r = rsLpRmSmLm( xb, -yb, -phi))) rsPath(out,  7,  r.v,  r.u, -HALF_PI,  r.t);
+  if ((r = rsLpRmSmLm(-xb, -yb,  phi))) rsPath(out,  7, -r.v, -r.u,  HALF_PI, -r.t);
+
+  if ((r = rsLpRmSmRm( xb,  yb,  phi))) rsPath(out, 10,  r.v,  r.u, -HALF_PI,  r.t);
+  if ((r = rsLpRmSmRm(-xb,  yb, -phi))) rsPath(out, 10, -r.v, -r.u,  HALF_PI, -r.t);
+  if ((r = rsLpRmSmRm( xb, -yb, -phi))) rsPath(out, 11,  r.v,  r.u, -HALF_PI,  r.t);
+  if ((r = rsLpRmSmRm(-xb, -yb,  phi))) rsPath(out, 11, -r.v, -r.u,  HALF_PI, -r.t);
+}
+
+function collectCCSCC(x, y, phi, out) {
+  let r;
+  if ((r = rsLpRmSLmRp( x,  y,  phi))) rsPath(out, 16,  r.t, -HALF_PI,  r.u, -HALF_PI,  r.v);
+  if ((r = rsLpRmSLmRp(-x,  y, -phi))) rsPath(out, 16, -r.t,  HALF_PI, -r.u,  HALF_PI, -r.v);
+  if ((r = rsLpRmSLmRp( x, -y, -phi))) rsPath(out, 17,  r.t, -HALF_PI,  r.u, -HALF_PI,  r.v);  // reflect → 17
+  if ((r = rsLpRmSLmRp(-x, -y,  phi))) rsPath(out, 17, -r.t,  HALF_PI, -r.u,  HALF_PI, -r.v);
+}
+
+/**
+ * Compute all RS paths from (x1,y1,th1) to (x2,y2,th2) with turning radius r.
+ * Returns array of path objects sorted by total length.
+ */
+function computeRS(x1, y1, th1, x2, y2, th2, r) {
+  const kappa = 1 / r;
+  const dx = x2 - x1, dy = y2 - y1;
+  const c = Math.cos(th1), s = Math.sin(th1);
+  const xn = ( c * dx + s * dy) * kappa;
+  const yn = (-s * dx + c * dy) * kappa;
+  const phi = th2 - th1;
+
+  const raw = [];
+  collectCSC  (xn, yn, phi, raw);
+  collectCCC  (xn, yn, phi, raw);
+  collectCCCC (xn, yn, phi, raw);
+  collectCCSC (xn, yn, phi, raw);
+  collectCCSCC(xn, yn, phi, raw);
+
+  return raw.map(({ typeIdx, lens }) => {
+    const types = RS_TYPE[typeIdx];
+    const controls = [];
+    let total = 0;
+    for (let i = 0; i < 5; i++) {
+      if (types[i] === RS_NOP) break;
+      total += Math.abs(lens[i]);
+      if (Math.abs(lens[i]) < RS_EPS) continue;
+      const k = types[i] === RS_L ? kappa : (types[i] === RS_R ? -kappa : 0);
+      controls.push({ delta_s: r * lens[i], kappa: k });
+    }
+    return { name: rsTypeName(typeIdx, lens), total: total * r, controls };
+  }).filter(p => p.total > RS_EPS)
+    .sort((a, b) => a.total - b.total);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PATH TRACING
+// ═══════════════════════════════════════════════════════════
+/**
+ * Trace a path given controls { delta_s, kappa }.
+ * Returns array of { x, y, fwd } world-space points.
+ *   delta_s > 0 → forward,  delta_s < 0 → backward
+ *   kappa > 0  → left turn, kappa < 0  → right turn, kappa = 0 → straight
+ */
+function traceControls(x0, y0, th0, controls) {
+  const pts = [{ x: x0, y: y0, fwd: true }];
+  let x = x0, y = y0, theta = th0;
+
+  for (const { delta_s, kappa } of controls) {
+    if (Math.abs(delta_s) < 1e-10) continue;
+    const fwd   = delta_s >= 0;
+    const steps = Math.max(2, Math.ceil(Math.abs(delta_s) / 3));
+
+    if (Math.abs(kappa) < 1e-10) {
+      // Straight segment
+      for (let i = 1; i <= steps; i++) {
+        const s = delta_s * i / steps;
+        pts.push({ x: x + s * Math.cos(theta), y: y + s * Math.sin(theta), fwd });
+      }
+      x += delta_s * Math.cos(theta);
+      y += delta_s * Math.sin(theta);
+    } else {
+      // Circular arc
+      const R    = 1 / Math.abs(kappa);
+      const sign = kappa > 0 ? 1 : -1;
+      // center of turning circle (left of heading if kappa>0, right if kappa<0)
+      const cx   = x - sign * R * Math.sin(theta);
+      const cy   = y + sign * R * Math.cos(theta);
+      // angle from center to robot at start
+      const sa   = theta - sign * Math.PI / 2;
+      // total heading change (positive = CCW, negative = CW)
+      const sweep = delta_s * kappa;
+
+      for (let i = 1; i <= steps; i++) {
+        const angle = sa + sweep * i / steps;
+        pts.push({ x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle), fwd });
+      }
+      const ea = sa + sweep;
+      x     = cx + R * Math.cos(ea);
+      y     = cy + R * Math.sin(ea);
+      theta += sweep;
+    }
+  }
+  return pts;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CAMERA / VIEWPORT
+// ═══════════════════════════════════════════════════════════
+const cam = {
+  cx: 0, cy: 0,   // canvas pixel position of the world origin
+  scale: 1.0      // pixels per world unit (1:1 default)
+};
+
+function w2c(wx, wy) {
+  // world → canvas  (y-up in world, y-down in canvas)
+  return { x: cam.cx + wx * cam.scale, y: cam.cy - wy * cam.scale };
+}
+function c2w(px, py) {
+  // canvas → world
+  return { x: (px - cam.cx) / cam.scale, y: -(py - cam.cy) / cam.scale };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  APPLICATION STATE
+// ═══════════════════════════════════════════════════════════
+let startState = { x: -140, y: 0, theta: 0 };         // heading east
+let goalState  = { x:  140, y: 0, theta: Math.PI };   // heading west
+let algorithm  = 'dubins';
+let radius     = 80;
+let showMode   = 'shortest';   // 'shortest' | 'all'
+let placeMode  = 'start';      // 'start'    | 'goal'
+let selectedPathIdx = 0;       // which path in "all paths" is highlighted
+
+// ═══════════════════════════════════════════════════════════
+//  CANVAS SETUP & RESIZE
+// ═══════════════════════════════════════════════════════════
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('canvas-wrap');
+
+function resizeCanvas() {
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  cam.cx = canvas.width  / 2;
+  cam.cy = canvas.height / 2;
+  render();
+}
+new ResizeObserver(resizeCanvas).observe(wrap);
+
+// ═══════════════════════════════════════════════════════════
+//  RENDERING
+// ═══════════════════════════════════════════════════════════
+const COLORS = {
+  gridMinor : '#1e2832',
+  gridMajor : '#2a3443',
+  axis      : '#3a4a5c',
+  fwd       : '#3fb950',
+  bwd       : '#f78166',
+  fwdAlpha  : '#3fb95088',
+  bwdAlpha  : '#f7816688',
+  startFill : '#3fb95044',
+  startLine : '#3fb950',
+  goalFill  : '#388bfd44',
+  goalLine  : '#388bfd',
+  cusp      : '#e3b341',
+  altPath   : '#58a6ff55',
+};
+
+function drawGrid() {
+  const W = canvas.width, H = canvas.height;
+  const step = 50 * cam.scale;  // pixels per grid cell
+
+  // offsets so grid lines hit world multiples of 50
+  const ox = ((cam.cx % step) + step) % step;
+  const oy = ((cam.cy % step) + step) % step;
+
+  ctx.lineWidth = 1;
+  for (let x = ox; x <= W; x += step) {
+    const wx = Math.round((x - cam.cx) / cam.scale / 50) * 50;
+    ctx.strokeStyle = (wx % 250 === 0) ? COLORS.gridMajor : COLORS.gridMinor;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = oy; y <= H; y += step) {
+    const wy = Math.round((y - cam.cy) / cam.scale / 50) * 50;  // note: canvas y
+    ctx.strokeStyle = (wy % 250 === 0) ? COLORS.gridMajor : COLORS.gridMinor;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Axes
+  const orig = w2c(0, 0);
+  ctx.strokeStyle = COLORS.axis; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(orig.x, 0); ctx.lineTo(orig.x, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, orig.y); ctx.lineTo(W, orig.y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/** Draw a simple car marker with heading arrow */
+function drawCar(wx, wy, theta, fillColor, strokeColor) {
+  const { x, y } = w2c(wx, wy);
+  const s = Math.min(1.4, Math.max(0.6, cam.scale));  // clamp marker size to be readable at any zoom
+  const W2 = 14 * s, H2 = 8 * s;   // half-width, half-height of body
+  const arrowLen = 18 * s;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-theta);  // negate: canvas y is flipped relative to world y
+
+  // Body
+  ctx.fillStyle   = fillColor;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(-W2, -H2, W2 * 2, H2 * 2, 3 * s);
+  ctx.fill();
+  ctx.stroke();
+
+  // Direction arrow
+  ctx.fillStyle = strokeColor;
+  ctx.beginPath();
+  ctx.moveTo(arrowLen, 0);
+  ctx.lineTo(arrowLen - 7 * s, -5 * s);
+  ctx.lineTo(arrowLen - 7 * s,  5 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(W2, 0); ctx.lineTo(arrowLen, 0); ctx.stroke();
+
+  ctx.restore();
+}
+
+/** Draw a polyline, changing color when fwd flips */
+function drawPathPoints(pts, alpha = 1) {
+  if (pts.length < 2) return;
+
+  // detect cusps (fwd→bwd or bwd→fwd transitions)
+  const cuspPts = [];
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].fwd !== pts[i - 1].fwd) cuspPts.push(pts[i]);
+  }
+
+  let i = 0;
+  while (i < pts.length - 1) {
+    const curFwd = pts[i].fwd;
+    const baseColor = curFwd ? COLORS.fwd : COLORS.bwd;
+
+    ctx.beginPath();
+    ctx.strokeStyle = alpha < 1 ? COLORS.altPath : baseColor;
+    ctx.lineWidth   = alpha < 1 ? 1.5 : 2.5;
+    ctx.setLineDash(alpha < 1 ? [5, 5] : []);
+
+    const p0 = w2c(pts[i].x, pts[i].y);
+    ctx.moveTo(p0.x, p0.y);
+    while (i < pts.length - 1 && pts[i + 1].fwd === curFwd) {
+      i++;
+      const p = w2c(pts[i].x, pts[i].y);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    i++;
+  }
+  ctx.setLineDash([]);
+
+  // Cusp markers
+  for (const cp of cuspPts) {
+    const { x, y } = w2c(cp.x, cp.y);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, TWO_PI);
+    ctx.fillStyle = COLORS.cusp;
+    ctx.fill();
+    ctx.strokeStyle = '#0d1117';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+/** Compute current paths */
+function getPaths() {
+  const fn = algorithm === 'dubins' ? computeDubins : computeRS;
+  return fn(
+    startState.x, startState.y, startState.theta,
+    goalState.x,  goalState.y,  goalState.theta,
+    radius
+  );
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawGrid();
+
+  const paths = getPaths();
+  if (paths.length === 0) {
+    // no path found (degenerate case)
+  } else {
+    if (showMode === 'all') {
+      // Draw all candidate paths in muted color first
+      for (let i = 1; i < paths.length; i++) {
+        const pts = traceControls(
+          startState.x, startState.y, startState.theta,
+          paths[i].controls
+        );
+        drawPathPoints(pts, 0.4);
+      }
+      // Highlighted selected path
+      const selIdx = Math.min(selectedPathIdx, paths.length - 1);
+      const pts = traceControls(
+        startState.x, startState.y, startState.theta,
+        paths[selIdx].controls
+      );
+      drawPathPoints(pts, 1.0);
+    } else {
+      // Shortest path only
+      const pts = traceControls(
+        startState.x, startState.y, startState.theta,
+        paths[0].controls
+      );
+      drawPathPoints(pts, 1.0);
+    }
+  }
+
+  // State markers (drawn on top of path)
+  drawCar(startState.x, startState.y, startState.theta, COLORS.startFill, COLORS.startLine);
+  drawCar(goalState.x,  goalState.y,  goalState.theta,  COLORS.goalFill,  COLORS.goalLine);
+
+  // Update info panel
+  updatePathInfo(paths);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PATH INFO PANEL
+// ═══════════════════════════════════════════════════════════
+function fmtLen(l) { return l.toFixed(1); }
+
+function updatePathInfo(paths) {
+  const el = document.getElementById('path-info');
+
+  if (!paths || paths.length === 0) {
+    el.innerHTML = '<p class="pi-empty">No valid path found.</p>';
+    return;
+  }
+
+  const displayIdx = showMode === 'all'
+    ? Math.min(selectedPathIdx, paths.length - 1)
+    : 0;
+  const best = paths[displayIdx];
+
+  let html = `<div class="pi-best">`;
+  html += `<div class="pi-name">${best.name}</div>`;
+  html += `<div class="pi-length">Length: <b>${fmtLen(best.total)}</b> px</div>`;
+  html += `<div class="pi-segs">`;
+  for (const c of best.controls) {
+    const fwd  = c.delta_s >= 0;
+    const dir  = fwd ? '▶' : '◀';
+    const cls  = fwd ? 'seg-fwd' : 'seg-bwd';
+    const type = Math.abs(c.kappa) < RS_EPS ? 'Straight'
+               : (c.kappa > 0 ? 'Left arc' : 'Right arc');
+    html += `<span class="${cls}">${dir} ${type} &nbsp;${fmtLen(Math.abs(c.delta_s))} px</span><br>`;
+  }
+  html += `</div></div>`;
+
+  if (showMode === 'all' && paths.length > 1) {
+    html += `<hr class="pi-divider">`;
+    html += `<div class="pi-all-title">All ${paths.length} candidates</div>`;
+    for (let i = 0; i < paths.length; i++) {
+      const p   = paths[i];
+      const cls = i === displayIdx ? 'pi-all-item selected' : 'pi-all-item';
+      html += `<div class="${cls}" data-idx="${i}">
+        <span class="pi-all-name">${p.name}</span>
+        <span class="pi-all-len">${fmtLen(p.total)} px</span>
+      </div>`;
+    }
+  }
+
+  el.innerHTML = html;
+
+  // Click on a candidate to highlight it
+  el.querySelectorAll('.pi-all-item').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedPathIdx = parseInt(item.dataset.idx, 10);
+      render();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MOUSE INTERACTION
+// ═══════════════════════════════════════════════════════════
+let drag = {
+  active   : false,
+  mode     : null,    // 'place' (placing a state) | 'pan' (panning camera)
+  originX  : 0,       // canvas coords of mousedown
+  originY  : 0,
+  camCxAt  : 0,       // cam.cx at mousedown start (for pan)
+  camCyAt  : 0,
+  minDragPx: 5,       // px threshold to count as a drag
+  moved    : false,
+};
+
+function getCanvasPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return { x: touch.clientX - r.left, y: touch.clientY - r.top };
+}
+
+canvas.addEventListener('mousedown', e => {
+  const { x, y } = getCanvasPos(e);
+  drag.active  = true;
+  drag.originX = x;
+  drag.originY = y;
+  drag.moved   = false;
+
+  if (e.button === 1 || e.altKey) {
+    // Middle button or Alt → pan
+    drag.mode    = 'pan';
+    drag.camCxAt = cam.cx;
+    drag.camCyAt = cam.cy;
+    canvas.style.cursor = 'grabbing';
+  } else {
+    drag.mode = 'place';
+    // Immediately set position on mousedown
+    const wPos = c2w(x, y);
+    if (placeMode === 'start') {
+      startState.x = wPos.x;
+      startState.y = wPos.y;
+    } else {
+      goalState.x = wPos.x;
+      goalState.y = wPos.y;
+    }
+    render();
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!drag.active) return;
+  const { x, y } = getCanvasPos(e);
+  const dx = x - drag.originX, dy = y - drag.originY;
+  if (!drag.moved && Math.sqrt(dx * dx + dy * dy) > drag.minDragPx) drag.moved = true;
+
+  if (drag.mode === 'pan') {
+    cam.cx = drag.camCxAt + (x - drag.originX);
+    cam.cy = drag.camCyAt + (y - drag.originY);
+    render();
+  } else if (drag.mode === 'place' && drag.moved) {
+    // Compute orientation: angle from drag origin (world) to current mouse (world)
+    const oW = c2w(drag.originX, drag.originY);
+    const cW = c2w(x, y);
+    const angle = Math.atan2(cW.y - oW.y, cW.x - oW.x);
+    if (placeMode === 'start') startState.theta = angle;
+    else                        goalState.theta  = angle;
+    render();
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  drag.active = false;
+  canvas.style.cursor = 'crosshair';
+});
+canvas.addEventListener('mouseleave', () => { drag.active = false; });
+
+// Zoom with mouse wheel
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const { x, y } = getCanvasPos(e);
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  // keep world point under cursor fixed
+  const wx = (x - cam.cx) / cam.scale;
+  const wy = (y - cam.cy) / cam.scale;  // note: canvas y is already in cam frame
+  cam.scale *= factor;
+  cam.scale  = Math.min(8, Math.max(0.15, cam.scale));
+  cam.cx = x - wx * cam.scale;
+  cam.cy = y - wy * cam.scale;
+  render();
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════
+const algSelect    = document.getElementById('alg-select');
+const radiusSlider = document.getElementById('radius-slider');
+const radiusDisp   = document.getElementById('radius-display');
+const showSelect   = document.getElementById('show-select');
+const modeStartBtn = document.getElementById('mode-start-btn');
+const modeGoalBtn  = document.getElementById('mode-goal-btn');
+const resetBtn     = document.getElementById('reset-btn');
+
+algSelect.addEventListener('change', () => {
+  algorithm = algSelect.value;
+  selectedPathIdx = 0;
+  render();
+});
+
+radiusSlider.addEventListener('input', () => {
+  radius = parseInt(radiusSlider.value, 10);
+  radiusDisp.textContent = radius;
+  selectedPathIdx = 0;
+  render();
+});
+
+showSelect.addEventListener('change', () => {
+  showMode = showSelect.value;
+  selectedPathIdx = 0;
+  render();
+});
+
+function setPlaceMode(m) {
+  placeMode = m;
+  modeStartBtn.classList.toggle('active', m === 'start');
+  modeGoalBtn .classList.toggle('active', m === 'goal');
+}
+modeStartBtn.addEventListener('click', () => setPlaceMode('start'));
+modeGoalBtn .addEventListener('click', () => setPlaceMode('goal'));
+
+resetBtn.addEventListener('click', () => {
+  startState = { x: -140, y: 0, theta: 0 };
+  goalState  = { x:  140, y: 0, theta: Math.PI };
+  radius     = 80;
+  algorithm  = 'dubins';
+  showMode   = 'shortest';
+  selectedPathIdx = 0;
+  radiusSlider.value   = 80;
+  radiusDisp.textContent = 80;
+  algSelect.value      = 'dubins';
+  showSelect.value     = 'shortest';
+  setPlaceMode('start');
+  // Reset zoom & pan
+  cam.cx = canvas.width  / 2;
+  cam.cy = canvas.height / 2;
+  cam.scale = 1.0;
+  render();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  switch (e.key) {
+    case 's': case 'S': case '1': setPlaceMode('start'); break;
+    case 'g': case 'G': case '2': setPlaceMode('goal');  break;
+    case 'r': case 'R': resetBtn.click(); break;
+    case 'a': case 'A':
+      showSelect.value = showMode === 'shortest' ? 'all' : 'shortest';
+      showMode         = showSelect.value;
+      selectedPathIdx  = 0;
+      render();
+      break;
+    case 'd': case 'D':
+      algSelect.value = 'dubins'; algorithm = 'dubins'; selectedPathIdx = 0; render(); break;
+    case 'e': case 'E':
+      algSelect.value = 'rs'; algorithm = 'rs'; selectedPathIdx = 0; render(); break;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+resizeCanvas();
+</script>
+</body>
+</html>
