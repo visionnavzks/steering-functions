@@ -21,6 +21,6 @@ hybrid-curvature planner types remain available in the enum for API compatibilit
 ## Run the Python tests
 
 ```bash
-cd /home/runner/work/steering-functions/steering-functions
+cd steering-functions
 python3 -m unittest discover -s python/tests
 ```
