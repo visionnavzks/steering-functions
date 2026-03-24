@@ -1,4 +1,6 @@
-/*********************************************************************
+#pragma once
+
+#include "steering_functions/cc_reeds_shepp_state_space/cc00_reeds_shepp_state_space.hpp"/*********************************************************************
 *  Copyright (c) 2017 - for information on the respective copyright
 *  owner see the NOTICE file and/or the repository
 *

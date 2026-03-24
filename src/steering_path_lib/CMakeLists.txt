@@ -3,6 +3,7 @@ project(steering_path_lib)
 
 # Create the library
 add_library(steering_path_lib)
+target_compile_features(steering_path_lib PUBLIC cxx_std_17)
 
 # Specify the include directories for the library
 target_include_directories(steering_path_lib

@@ -86,6 +86,9 @@ namespace steering
     class Dubins_State_Space : public BaseStateSpace
     {
     public:
+        using BaseStateSpace::get_path;
+        using BaseStateSpace::interpolate;
+
         /** \brief The Dubins path segment type */
         enum Dubins_Path_Segment_Type
         {

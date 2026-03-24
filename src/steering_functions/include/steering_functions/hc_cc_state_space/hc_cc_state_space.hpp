@@ -1,4 +1,6 @@
-/*********************************************************************
+#pragma once
+
+#include "steering_functions/hc_cc_core/hc_cc_state_space.hpp"/*********************************************************************
  *  Copyright (c) 2017 Robert Bosch GmbH.
  *  All rights reserved.
  *
@@ -29,6 +31,8 @@ namespace steering
     class HC_CC_State_Space : public BaseStateSpace
     {
     public:
+        using BaseStateSpace::get_path;
+
         /** \brief Constructor */
         HC_CC_State_Space(double kappa, double sigma, double discretization);
 
