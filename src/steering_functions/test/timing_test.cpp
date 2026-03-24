@@ -82,7 +82,8 @@ double get_std(const vector<double>& v)
     double diff_sq = 0;
     for (const auto& x : v)
     {
-        diff_sq += pow(x - mean, 2);
+        double diff = x - mean;
+        diff_sq += diff * diff;
     }
     return sqrt(diff_sq / v.size());
 }
