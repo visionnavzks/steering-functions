@@ -1753,8 +1753,13 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
                     if abs(start_control.delta_s) > get_epsilon():
                         cc_dubins_controls.insert(0, start_control)
                     if abs(end_control.delta_s) > get_epsilon():
-                        reverse_control(end_control)
-                        cc_dubins_controls.append(end_control)
+                        ec = Control(
+                            delta_s=end_control.delta_s,
+                            kappa=end_control.kappa,
+                            sigma=end_control.sigma,
+                        )
+                        reverse_control(ec)
+                        cc_dubins_controls.append(ec)
 
                 distance = sum(abs(c.delta_s) for c in cc_dubins_controls)
                 controls_distance_pairs.append((cc_dubins_controls, distance))
