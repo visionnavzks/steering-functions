@@ -21,10 +21,10 @@ class SteeringPathTest(unittest.TestCase):
         start = State(0.0, 0.0, 0.0)
         goal = State(3.0, 4.0, 0.0)
         controls = planner.compute_shortest_control_sequence(start, goal)
-        self.assertEqual(1, len(controls))
-        self.assertAlmostEqual(5.0, controls[0].delta_s)
-        self.assertAlmostEqual(0.0, controls[0].kappa)
-        self.assertAlmostEqual(0.0, controls[0].sigma)
+        self.assertEqual(len(controls), 1)
+        self.assertAlmostEqual(controls[0].delta_s, 5.0)
+        self.assertAlmostEqual(controls[0].kappa, 0.0)
+        self.assertAlmostEqual(controls[0].sigma, 0.0)
 
     def test_constructor_rejects_none_path_type(self):
         with self.assertRaises(ValueError):
@@ -38,6 +38,7 @@ class SteeringPathTest(unittest.TestCase):
         self.assertGreaterEqual(len(path), 2)
         self.assertAlmostEqual(start.x, path[0].x)
         self.assertAlmostEqual(start.y, path[0].y)
+        self.assertAlmostEqual(start.theta, path[0].theta)
 
 
 if __name__ == "__main__":

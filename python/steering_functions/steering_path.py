@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from .planners import (
-    CC0pmDubinsStateSpace,
+    CC0PMDubinsStateSpace,
     CC00DubinsStateSpace,
     CC00ReedsSheppStateSpace,
     CCDubinsStateSpace,
     CCpm0DubinsStateSpace,
     CCpmpmDubinsStateSpace,
     DubinsStateSpace,
-    HC0pmReedsSheppStateSpace,
+    HC0PMReedsSheppStateSpace,
     HC00ReedsSheppStateSpace,
     HCReedsSheppStateSpace,
     HCpm0ReedsSheppStateSpace,
@@ -42,19 +42,22 @@ class SteeringPath:
         mapping = {
             PathType.CC_DUBINS: CCDubinsStateSpace,
             PathType.CC00_DUBINS: CC00DubinsStateSpace,
-            PathType.CC0PM_DUBINS: CC0pmDubinsStateSpace,
+            PathType.CC0PM_DUBINS: CC0PMDubinsStateSpace,
             PathType.CCPM0_DUBINS: CCpm0DubinsStateSpace,
             PathType.CCPMPM_DUBINS: CCpmpmDubinsStateSpace,
             PathType.DUBINS: DubinsStateSpace,
             PathType.CC00_RS: CC00ReedsSheppStateSpace,
             PathType.HC_RS: HCReedsSheppStateSpace,
             PathType.HC00_RS: HC00ReedsSheppStateSpace,
-            PathType.HC0PM_RS: HC0pmReedsSheppStateSpace,
+            PathType.HC0PM_RS: HC0PMReedsSheppStateSpace,
             PathType.HCPM0_RS: HCpm0ReedsSheppStateSpace,
             PathType.HCPMPM_RS: HCpmpmReedsSheppStateSpace,
             PathType.RS: ReedsSheppStateSpace,
         }
-        return mapping[self._path_type](self._discretization)
+        planner_type = mapping.get(self._path_type)
+        if planner_type is None:
+            raise ValueError(f"Unsupported planner type: {self._path_type}")
+        return planner_type(self._discretization)
 
     @property
     def path_type(self) -> PathType:

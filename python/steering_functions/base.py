@@ -62,14 +62,13 @@ class BaseStateSpace(abc.ABC):
             raise ValueError("discretization must be > 0")
 
         curr = replace(state)
-        curr.kappa = controls_list[0].kappa
-        curr.sigma = controls_list[0].sigma
-        curr.d = 1.0 if controls_list[0].delta_s >= 0 else -1.0
         path = [curr]
 
         for control in controls_list:
             seg_length = abs(control.delta_s)
-            n = max(2, math.ceil(seg_length / step))
+            if seg_length == 0.0:
+                continue
+            n = max(1, math.ceil(seg_length / step))
             seg_step = seg_length / n
             for _ in range(n):
                 curr = self.integrate_ode(curr, control, seg_step)

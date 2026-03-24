@@ -29,7 +29,7 @@ class CC00DubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
-class CC0pmDubinsStateSpace(_SimplifiedPlanner):
+class CC0PMDubinsStateSpace(_SimplifiedPlanner):
     pass
 
 
@@ -57,7 +57,7 @@ class HC00ReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
-class HC0pmReedsSheppStateSpace(_SimplifiedPlanner):
+class HC0PMReedsSheppStateSpace(_SimplifiedPlanner):
     pass
 
 
