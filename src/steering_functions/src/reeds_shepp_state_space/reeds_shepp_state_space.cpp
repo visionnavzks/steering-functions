@@ -166,39 +166,6 @@ namespace steering
                         Reeds_Shepp_State_Space::reeds_shepp_path_type[13], -t, -u, -v));
             }
         }
-        // Helper function type definition
-        typedef void (*PathCollectorFunc)(double                                             x,
-                                          double                                             y,
-                                          double                                             phi,
-                                          vector<Reeds_Shepp_State_Space::Reeds_Shepp_Path>& paths);
-
-        // Helper function to find shortest path
-        void find_shortest_path(double                                     x,
-                                double                                     y,
-                                double                                     phi,
-                                Reeds_Shepp_State_Space::Reeds_Shepp_Path& path,
-                                PathCollectorFunc                          collect_paths)
-        {
-            vector<Reeds_Shepp_State_Space::Reeds_Shepp_Path> paths;
-            collect_paths(x, y, phi, paths);
-
-            double Lmin = path.length();
-            for (const auto& p : paths)
-            {
-                double L = p.length();
-                if (L < Lmin)
-                {
-                    path = p;
-                    Lmin = L;
-                }
-            }
-        }
-
-        // Find shortest CSC path
-        void CSC(double x, double y, double phi, Reeds_Shepp_State_Space::Reeds_Shepp_Path& path)
-        {
-            find_shortest_path(x, y, phi, path, CSC);
-        }
 
         // formula 8.3 / 8.4  *** TYPO IN PAPER ***
         inline bool LpRmL(double x, double y, double phi, double& t, double& u, double& v)
@@ -262,11 +229,6 @@ namespace steering
                     paths.emplace_back(Reeds_Shepp_State_Space::Reeds_Shepp_Path(
                         Reeds_Shepp_State_Space::reeds_shepp_path_type[1], -v, -u, -t));
             }
-        }
-        // Find shortest CCC path
-        void CCC(double x, double y, double phi, Reeds_Shepp_State_Space::Reeds_Shepp_Path& path)
-        {
-            find_shortest_path(x, y, phi, path, CCC);
         }
         // formula 8.7
         inline bool LpRupLumRm(double x, double y, double phi, double& t, double& u, double& v)
@@ -346,11 +308,6 @@ namespace steering
                     paths.emplace_back(Reeds_Shepp_State_Space::Reeds_Shepp_Path(
                         Reeds_Shepp_State_Space::reeds_shepp_path_type[3], -t, -u, -u, -v));
             }
-        }
-        // Find shortest CCCC path
-        void CCCC(double x, double y, double phi, Reeds_Shepp_State_Space::Reeds_Shepp_Path& path)
-        {
-            find_shortest_path(x, y, phi, path, CCCC);
         }
         // formula 8.9
         inline bool LpRmSmLm(double x, double y, double phi, double& t, double& u, double& v)
@@ -465,11 +422,6 @@ namespace steering
                         Reeds_Shepp_State_Space::reeds_shepp_path_type[11], -v, -u, .5 * PI, -t));
             }
         }
-        // Find shortest CCSC path
-        void CCSC(double x, double y, double phi, Reeds_Shepp_State_Space::Reeds_Shepp_Path& path)
-        {
-            find_shortest_path(x, y, phi, path, CCSC);
-        }
 
         // formula 8.11 *** TYPO IN PAPER ***
         inline bool LpRmSLmRp(double x, double y, double phi, double& t, double& u, double& v)
@@ -537,20 +489,24 @@ namespace steering
                     -v));
         }
 
-        // Find shortest CCSCC path
-        void CCSCC(double x, double y, double phi, Reeds_Shepp_State_Space::Reeds_Shepp_Path& path)
-        {
-            find_shortest_path(x, y, phi, path, CCSCC);
-        }
+        // Forward declaration
+        vector<Reeds_Shepp_State_Space::Reeds_Shepp_Path>
+        get_all_rs_paths(double x, double y, double phi);
 
         Reeds_Shepp_State_Space::Reeds_Shepp_Path reeds_shepp(double x, double y, double phi)
         {
             Reeds_Shepp_State_Space::Reeds_Shepp_Path path;
-            CSC(x, y, phi, path);
-            CCC(x, y, phi, path);
-            CCCC(x, y, phi, path);
-            CCSC(x, y, phi, path);
-            CCSCC(x, y, phi, path);
+            const auto paths = get_all_rs_paths(x, y, phi);
+            double     Lmin  = path.length();
+            for (const auto& p : paths)
+            {
+                double L = p.length();
+                if (L < Lmin)
+                {
+                    path = p;
+                    Lmin = L;
+                }
+            }
             return path;
         }
 
