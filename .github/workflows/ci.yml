@@ -19,3 +19,6 @@ jobs:
 
       - name: Configure, build, and test
         run: BUILD_TESTING=ON RUN_TESTS=1 bash ./build.sh
+
+      - name: Run Python tests
+        run: python3 -m unittest discover -s python/tests -v
