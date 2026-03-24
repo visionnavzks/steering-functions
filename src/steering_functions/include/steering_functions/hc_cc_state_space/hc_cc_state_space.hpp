@@ -29,6 +29,8 @@ namespace steering
     class HC_CC_State_Space : public BaseStateSpace
     {
     public:
+        using BaseStateSpace::get_path;
+
         /** \brief Constructor */
         HC_CC_State_Space(double kappa, double sigma, double discretization);
 
