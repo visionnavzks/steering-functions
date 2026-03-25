@@ -1,5 +1,11 @@
 build/
 .cache/
+.pydeps/
+lib.linux-*/
+temp.linux-*/
 *.egg-info/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.so
