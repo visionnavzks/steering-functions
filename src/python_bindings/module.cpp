@@ -150,7 +150,8 @@ PYBIND11_MODULE(_core, module)
                  py::arg("kappa"),
                  py::arg("sigma"),
                  py::arg("discretization") = 0.1,
-                 py::arg("forwards") = true);
+                 py::arg("forwards") = true)
+            .def("get_controls_reverse", &CC_Dubins_State_Space::get_controls_reverse);
     steering::bind_common_planner_api(cc_dubins_state_space);
 
     auto cc00_dubins_state_space =

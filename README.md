@@ -22,6 +22,7 @@ Useful environment variables:
 - `BUILD_TYPE` to set the CMake build type. Default: `Release`
 - `BUILD_TESTING` to enable or disable tests. Default: `OFF`
 - `RUN_TESTS` to run `ctest` after the build. Default: `0`
+- `BUILD_PYTHON_BINDINGS` to include the pybind11 extension in the root CMake build. Default: `OFF`
 
 Useful CMake options:
 
@@ -30,6 +31,34 @@ Useful CMake options:
 ## Python
 
 The repository now also exposes the complete high-level planning API as a Python package backed by the existing implementation.
+
+There are now two supported build flows.
+
+Build the extension through CMake and copy it into `python/steering_functions/`:
+
+```bash
+bash ./build_python.sh
+```
+
+Build, then run the Python unit tests:
+
+```bash
+export RUN_PYTHON_TESTS=1
+bash ./build_python.sh
+```
+
+Build, then launch the interactive demo:
+
+```bash
+export RUN_PYTHON_DEMO=1
+bash ./build_python.sh
+```
+
+You can also include the bindings in a normal root CMake build:
+
+```bash
+./build.sh -DBUILD_PYTHON_BINDINGS=ON
+```
 
 Install it from the repository root:
 
@@ -41,6 +70,13 @@ Run the focused Python binding tests:
 
 ```bash
 python3 -m unittest discover -s python/tests -v
+```
+
+Run the interactive demo manually:
+
+```bash
+export PYTHONPATH="$PWD/python${PYTHONPATH:+:$PYTHONPATH}"
+python3 python/demo_interactive.py
 ```
 
 Example usage:
@@ -59,3 +95,5 @@ path = planner.computeShortestPath(start, goal)
 - `include/steering_state/state.h`: shared public `State` type used by both libraries
 - `src/steering_functions`: steering function implementations and unit tests
 - `src/steering_path_lib`: wrapper library for selecting planners and computing paths
+- `src/python_bindings`: pybind11 module source and CMake integration
+- `python`: Python package, demo, and Python tests

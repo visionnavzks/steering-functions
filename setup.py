@@ -1,11 +1,16 @@
-from glob import glob
 from pathlib import Path
+import sys
 
-from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
 
 ROOT = Path(__file__).parent.resolve()
+PYDEPS_DIR = ROOT / ".pydeps"
+
+if PYDEPS_DIR.exists():
+    sys.path.insert(0, str(PYDEPS_DIR))
+
+from pybind11.setup_helpers import Pybind11Extension, build_ext
 
 
 def glob_sources(pattern: str) -> list[str]:
@@ -16,7 +21,7 @@ extension = Pybind11Extension(
     "steering_functions._core",
     sorted(
         [
-            str(ROOT / "python_bindings" / "module.cpp"),
+            str(ROOT / "src" / "python_bindings" / "module.cpp"),
             str(ROOT / "src" / "steering_path_lib" / "src" / "steering_path.cpp"),
             str(ROOT / "src" / "steering_functions" / "src" / "base_state_space.cpp"),
             str(ROOT / "src" / "steering_functions" / "src" / "dubins_state_space" / "dubins_state_space.cpp"),

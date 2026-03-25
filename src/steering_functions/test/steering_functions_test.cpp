@@ -844,6 +844,88 @@ TEST(SteeringFunctions, symmetry)
     }
 }
 
+TEST(SteeringFunctions, stationaryPathIsNotEmpty)
+{
+    State state;
+    state.x     = 1.5;
+    state.y     = -2.0;
+    state.theta = 0.75;
+    state.kappa = 0.2;
+    state.d     = 0.0;
+
+    vector<vector<State>> paths = {
+        cc_dubins_forwards_ss.get_path(state, state),
+        cc_dubins_backwards_ss.get_path(state, state),
+        cc00_dubins_forwards_ss.get_path(state, state),
+        cc00_dubins_backwards_ss.get_path(state, state),
+        cc0pm_dubins_forwards_ss.get_path(state, state),
+        cc0pm_dubins_backwards_ss.get_path(state, state),
+        ccpm0_dubins_forwards_ss.get_path(state, state),
+        ccpm0_dubins_backwards_ss.get_path(state, state),
+        ccpmpm_dubins_forwards_ss.get_path(state, state),
+        ccpmpm_dubins_backwards_ss.get_path(state, state),
+        dubins_forwards_ss.get_path(state, state),
+        dubins_backwards_ss.get_path(state, state),
+        cc00_rs_ss.get_path(state, state),
+        hc_rs_ss.get_path(state, state),
+        hc00_rs_ss.get_path(state, state),
+        hc0pm_rs_ss.get_path(state, state),
+        hcpm0_rs_ss.get_path(state, state),
+        hcpmpm_rs_ss.get_path(state, state),
+        rs_ss.get_path(state, state),
+    };
+
+    for (const auto& path : paths)
+    {
+        ASSERT_FALSE(path.empty());
+        EXPECT_LT(get_distance(state, path.back()), EPS_DISTANCE);
+        EXPECT_LT(fabs(twopify(state.theta) - twopify(path.back().theta)), EPS_YAW);
+        EXPECT_LT(fabs(state.kappa - path.back().kappa), EPS_KAPPA);
+    }
+}
+
+TEST(SteeringFunctions, ccDubinsReverseControls)
+{
+    State start;
+    start.x     = -3.2;
+    start.y     = 1.4;
+    start.theta = 0.7;
+    start.kappa = 0.35;
+    start.d     = 0.0;
+
+    State goal;
+    goal.x     = 2.1;
+    goal.y     = -2.8;
+    goal.theta = -1.1;
+    goal.kappa = -0.45;
+    goal.d     = 0.0;
+
+    vector<Control> controls = cc_dubins_forwards_ss.get_controls_reverse(start, goal);
+    ASSERT_FALSE(controls.empty());
+
+    vector<Control> reversed_forward_controls = cc_dubins_forwards_ss.get_controls(goal, start);
+    ASSERT_EQ(controls.size(), reversed_forward_controls.size());
+
+    reverse(reversed_forward_controls.begin(), reversed_forward_controls.end());
+    for (auto& control : reversed_forward_controls)
+    {
+        reverse_control(control);
+    }
+
+    for (size_t i = 0; i < controls.size(); ++i)
+    {
+        EXPECT_NEAR(controls[i].delta_s, reversed_forward_controls[i].delta_s, EPS_KAPPA);
+        EXPECT_NEAR(controls[i].kappa, reversed_forward_controls[i].kappa, EPS_KAPPA);
+        EXPECT_NEAR(controls[i].sigma, reversed_forward_controls[i].sigma, EPS_KAPPA);
+    }
+
+    vector<State> reverse_path = cc_dubins_forwards_ss.integrate(start, controls);
+    ASSERT_FALSE(reverse_path.empty());
+    EXPECT_LT(get_distance(goal, reverse_path.back()), EPS_DISTANCE);
+    EXPECT_LT(fabs(twopify(goal.theta) - twopify(reverse_path.back().theta)), EPS_YAW);
+    EXPECT_LT(fabs(goal.kappa - reverse_path.back().kappa), EPS_KAPPA);
+}
+
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);

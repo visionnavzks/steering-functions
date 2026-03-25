@@ -1,4 +1,5 @@
 build/
+build-python/
 .cache/
 .pydeps/
 lib.linux-*/
