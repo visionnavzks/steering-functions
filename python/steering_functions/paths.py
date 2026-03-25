@@ -171,8 +171,9 @@ def _direction(forward, order):
 
 def rs_turn_controls(c, q, order, controls):
     """Append controls for a rs-turn."""
+    import sys as _sys
     assert (abs(abs(c.kappa) - abs(q.kappa)) < get_epsilon()
-            and abs(abs(c.sigma) - float('inf')) < get_epsilon())
+            and abs(abs(c.sigma) - _sys.float_info.max) < get_epsilon())
     delta = c.deflection(q)
     length_arc = abs(c.kappa_inv) * c.rs_circular_deflection(delta)
     d = _direction(c.forward, order)

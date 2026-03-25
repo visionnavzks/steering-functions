@@ -135,8 +135,9 @@ class HC_CC_Circle(HC_CC_Circle_Param):
 
     def rs_turn_length(self, q):
         """Length of a rs-turn."""
+        import sys as _sys
         assert (abs(abs(self.kappa) - abs(q.kappa)) < get_epsilon()
-                and abs(abs(self.sigma) - float('inf')) < get_epsilon())
+                and abs(abs(self.sigma) - _sys.float_info.max) < get_epsilon())
         delta = self.deflection(q)
         return abs(self.kappa_inv * self.rs_circular_deflection(delta))
 
