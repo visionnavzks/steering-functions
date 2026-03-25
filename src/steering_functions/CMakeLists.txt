@@ -50,6 +50,9 @@ if(BUILD_TESTING)
   if(STEERING_FUNCTIONS_ENABLE_EXTENDED_TESTS)
     gtest_discover_tests(steering_functions_test)
   endif()
+
+  add_executable(generate_test_data test/generate_test_data.cpp)
+  target_link_libraries(generate_test_data PRIVATE steering_functions)
 endif()
 
 # add_executable (steering_functions_node "steering_functions.cpp" "steering_functions.h" ${SRC_FILES})
