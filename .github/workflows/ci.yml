@@ -18,4 +18,4 @@ jobs:
           sudo apt-get install -y cmake ninja-build g++ libgtest-dev
 
       - name: Configure, build, and test
-        run: BUILD_TESTING=ON RUN_TESTS=1 bash ./build.sh
+        run: BUILD_PYTHON=0 BUILD_TESTING=ON RUN_TESTS=1 bash ./scripts/build.sh
