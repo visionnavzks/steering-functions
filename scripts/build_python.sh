@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build-python}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 PYTHON_BIN="${PYTHON_BIN:-${PYTHON_EXECUTABLE:-$(command -v python3)}}"
