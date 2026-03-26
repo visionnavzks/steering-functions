@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_PYTHON="${BUILD_PYTHON:-0}"
+BUILD_PYTHON="${BUILD_PYTHON:-1}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 BUILD_TESTING="${BUILD_TESTING:-OFF}"
 RUN_TESTS="${RUN_TESTS:-0}"
