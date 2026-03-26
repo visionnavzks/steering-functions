@@ -11,11 +11,7 @@ PYTHON_BIN="${PYTHON_BIN:-${PYTHON_EXECUTABLE:-$(command -v python3)}}"
 RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-0}"
 RUN_PYTHON_DEMO="${RUN_PYTHON_DEMO:-0}"
 
-if [ "${BUILD_PYTHON}" = "1" ]; then
-    BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build-python}"
-else
-    BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build}"
-fi
+BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build}"
 
 cmake_args=(
     -S "${ROOT_DIR}"
