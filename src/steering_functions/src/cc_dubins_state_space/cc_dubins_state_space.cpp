@@ -247,16 +247,15 @@ namespace steering
                                                                const State& state2) const
     {
         // For pure reverse driving, we compute the path from state2 to state1
-        // then reverse the order and negate delta_s values
+        // then reverse each control so clothoid curvature/sharpness stay consistent.
         vector<Control> cc_dubins_controls = get_controls(state2, state1);
-        
-        // Reverse the order of controls and negate delta_s for backward driving
+
         reverse(cc_dubins_controls.begin(), cc_dubins_controls.end());
         for (auto& control : cc_dubins_controls)
         {
-            control.delta_s = -control.delta_s;
+            reverse_control(control);
         }
-        
+
         return cc_dubins_controls;
     }
 

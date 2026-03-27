@@ -5,6 +5,9 @@ project(steering_functions_workspace LANGUAGES CXX)
 include(CTest)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+option(BUILD_PYTHON_BINDINGS "Build the pybind11 Python extension" OFF)
 
 add_library(steering_state INTERFACE)
 target_compile_features(steering_state INTERFACE cxx_std_17)
@@ -15,3 +18,7 @@ target_include_directories(steering_state
 
 add_subdirectory(src/steering_functions)
 add_subdirectory(src/steering_path_lib)
+
+if(BUILD_PYTHON_BINDINGS)
+    add_subdirectory(src/python_bindings)
+endif()

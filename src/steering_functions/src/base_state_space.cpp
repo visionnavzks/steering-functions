@@ -145,6 +145,7 @@ namespace steering
         vector<State> path;
         if (controls.empty())
         {
+            path.push_back(state);
             return path;
         }
 
