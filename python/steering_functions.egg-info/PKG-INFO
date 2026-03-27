@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: steering-functions
-Version: 0.1.0
-Summary: Python package for steering functions path planning
-Requires-Python: >=3.9
-Dynamic: requires-python
-Dynamic: summary
