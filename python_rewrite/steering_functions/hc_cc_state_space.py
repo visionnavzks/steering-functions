@@ -9,6 +9,7 @@ import math
 from steering_functions.base_state_space import BaseStateSpace
 from steering_functions.state import State, Control
 from steering_functions.hc_cc_circle import HC_CC_Circle_Param
+from steering_functions.paths import _build_controls
 from steering_functions.utilities import (
     get_epsilon,
     end_of_clothoid,
@@ -59,6 +60,19 @@ class HC_CC_StateSpace(BaseStateSpace):
         self.hc_cc_circle_param_.set_param(
             kappa, sigma, radius, mu, sin_mu, cos_mu, delta_min,
         )
+
+    # ------------------------------------------------------------------
+    # Default get_distance / get_controls via _find_path
+    # ------------------------------------------------------------------
+    def get_distance(self, state1, state2):
+        """Return shortest-path distance between two states."""
+        path = self._find_path(state1, state2)
+        return path.length
+
+    def get_controls(self, state1, state2):
+        """Return controls for the shortest path between two states."""
+        path = self._find_path(state1, state2)
+        return _build_controls(path, self._CONTROL_TABLE)
 
     # ------------------------------------------------------------------
     # Path computation (filters negligible segments)

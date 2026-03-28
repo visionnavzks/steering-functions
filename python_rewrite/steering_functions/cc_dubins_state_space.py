@@ -339,7 +339,7 @@ class CC00_Dubins_State_Space(HC_CC_StateSpace):
             length[best],
         )
 
-    def cc00_dubins(self, state1, state2):
+    def _find_path(self, state1, state2):
         start = Configuration(state1.x, state1.y, state1.theta, 0.0)
         end = Configuration(state2.x, state2.y, state2.theta, 0.0)
 
@@ -373,14 +373,6 @@ class CC00_Dubins_State_Space(HC_CC_StateSpace):
 
         best = array_index_min(lg)
         return paths[best]
-
-    def get_distance(self, state1, state2):
-        p = self.cc00_dubins(state1, state2)
-        return p.length
-
-    def get_controls(self, state1, state2):
-        p = self.cc00_dubins(state1, state2)
-        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -682,7 +674,7 @@ class CC0pm_Dubins_State_Space(HC_CC_StateSpace):
             length[best],
         )
 
-    def cc0pm_dubins(self, state1, state2):
+    def _find_path(self, state1, state2):
         start = Configuration(state1.x, state1.y, state1.theta, 0.0)
         end1 = Configuration(state2.x, state2.y, state2.theta, self.kappa_)
         end2 = Configuration(state2.x, state2.y, state2.theta, -self.kappa_)
@@ -724,14 +716,6 @@ class CC0pm_Dubins_State_Space(HC_CC_StateSpace):
 
         best = array_index_min(lg)
         return paths[best]
-
-    def get_distance(self, state1, state2):
-        p = self.cc0pm_dubins(state1, state2)
-        return p.length
-
-    def get_controls(self, state1, state2):
-        p = self.cc0pm_dubins(state1, state2)
-        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -1032,7 +1016,7 @@ class CCpm0_Dubins_State_Space(HC_CC_StateSpace):
             length[best],
         )
 
-    def ccpm0_dubins(self, state1, state2):
+    def _find_path(self, state1, state2):
         start1 = Configuration(state1.x, state1.y, state1.theta, self.kappa_)
         start2 = Configuration(state1.x, state1.y, state1.theta, -self.kappa_)
         end = Configuration(state2.x, state2.y, state2.theta, 0.0)
@@ -1074,14 +1058,6 @@ class CCpm0_Dubins_State_Space(HC_CC_StateSpace):
 
         best = array_index_min(lg)
         return paths[best]
-
-    def get_distance(self, state1, state2):
-        p = self.ccpm0_dubins(state1, state2)
-        return p.length
-
-    def get_controls(self, state1, state2):
-        p = self.ccpm0_dubins(state1, state2)
-        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -1497,7 +1473,7 @@ class CCpmpm_Dubins_State_Space(HC_CC_StateSpace):
             length[best],
         )
 
-    def ccpmpm_dubins(self, state1, state2):
+    def _find_path(self, state1, state2):
         start1 = Configuration(state1.x, state1.y, state1.theta, self.kappa_)
         start2 = Configuration(state1.x, state1.y, state1.theta, -self.kappa_)
         end1 = Configuration(state2.x, state2.y, state2.theta, self.kappa_)
@@ -1545,14 +1521,6 @@ class CCpmpm_Dubins_State_Space(HC_CC_StateSpace):
 
         best = array_index_min(lg)
         return paths[best]
-
-    def get_distance(self, state1, state2):
-        p = self.ccpmpm_dubins(state1, state2)
-        return p.length
-
-    def get_controls(self, state1, state2):
-        p = self.ccpmpm_dubins(state1, state2)
-        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================

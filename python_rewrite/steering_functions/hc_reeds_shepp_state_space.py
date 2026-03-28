@@ -1049,7 +1049,7 @@ class HC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             cstart[best], cend[best], ci1[best], ci2[best],
             length[best])
 
-    def hc00_reeds_shepp(self, state1, state2):
+    def _find_path(self, state1, state2):
         """Compute shortest path between two states (4×4 circle combos)."""
         start = Configuration(state1.x, state1.y, state1.theta, 0.0)
         end = Configuration(state2.x, state2.y, state2.theta, 0.0)
@@ -1073,14 +1073,6 @@ class HC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                 if path is not None and (best_path is None or path.length < best_path.length):
                     best_path = path
         return best_path
-
-    def get_distance(self, state1, state2):
-        path = self.hc00_reeds_shepp(state1, state2)
-        return path.length
-
-    def get_controls(self, state1, state2):
-        path = self.hc00_reeds_shepp(state1, state2)
-        return _build_controls(path, self._CONTROL_TABLE)
 
 
 # ===================================================================
@@ -1686,7 +1678,7 @@ class HC0pm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             cstart[best], cend[best], ci1[best], ci2[best],
             length[best])
 
-    def hc0pm_reeds_shepp(self, state1, state2):
+    def _find_path(self, state1, state2):
         """Compute shortest path between two states (4×4 circle combos)."""
         start = Configuration(state1.x, state1.y, state1.theta, 0.0)
         end1 = Configuration(state2.x, state2.y, state2.theta, self.kappa_)
@@ -1720,14 +1712,6 @@ class HC0pm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                 if path is not None and (best_path is None or path.length < best_path.length):
                     best_path = path
         return best_path
-
-    def get_distance(self, state1, state2):
-        path = self.hc0pm_reeds_shepp(state1, state2)
-        return path.length
-
-    def get_controls(self, state1, state2):
-        path = self.hc0pm_reeds_shepp(state1, state2)
-        return _build_controls(path, self._CONTROL_TABLE)
 
 
 # ===================================================================
@@ -2700,7 +2684,7 @@ class HCpm0_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             cstart[best], cend[best], ci1[best], ci2[best],
             length[best])
 
-    def hcpm0_reeds_shepp(self, state1, state2):
+    def _find_path(self, state1, state2):
         """Compute shortest path between two states (4×4 circle combos)."""
         start1 = Configuration(state1.x, state1.y, state1.theta, self.kappa_)
         start2 = Configuration(state1.x, state1.y, state1.theta, -self.kappa_)
@@ -2735,14 +2719,6 @@ class HCpm0_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                                          or path.length < best_path.length):
                     best_path = path
         return best_path
-
-    def get_distance(self, state1, state2):
-        path = self.hcpm0_reeds_shepp(state1, state2)
-        return path.length
-
-    def get_controls(self, state1, state2):
-        path = self.hcpm0_reeds_shepp(state1, state2)
-        return _build_controls(path, self._CONTROL_TABLE)
 
 
 # ===================================================================
@@ -3798,7 +3774,7 @@ class HCpmpm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             cstart[best], cend[best], ci1[best], ci2[best],
             length[best])
 
-    def hcpmpm_reeds_shepp(self, state1, state2):
+    def _find_path(self, state1, state2):
         """Compute shortest path between two states (4×4 circle combos)."""
         start1 = Configuration(state1.x, state1.y, state1.theta, self.kappa_)
         start2 = Configuration(state1.x, state1.y, state1.theta, -self.kappa_)
@@ -3841,14 +3817,6 @@ class HCpmpm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                                          or path.length < best_path.length):
                     best_path = path
         return best_path
-
-    def get_distance(self, state1, state2):
-        path = self.hcpmpm_reeds_shepp(state1, state2)
-        return path.length
-
-    def get_controls(self, state1, state2):
-        path = self.hcpmpm_reeds_shepp(state1, state2)
-        return _build_controls(path, self._CONTROL_TABLE)
 
 
 # ===================================================================
