@@ -3909,10 +3909,19 @@ class HC_Reeds_Shepp_State_Space(HC_CC_StateSpace):
 
         return results
 
+    def _select_sub_space(self, start_state, end_state):
+        """Select appropriate sub-state-space based on endpoint curvatures."""
+        eps = get_epsilon()
+        if abs(start_state.kappa) < eps:
+            return self._hc0pm if abs(end_state.kappa) >= eps else self._hc00
+        else:
+            return self._hcpmpm if abs(end_state.kappa) >= eps else self._hcpm0
+
     def get_distance(self, state1, state2):
         start_preds = self.predict_state(state1)
         end_preds = self.predict_state(state2)
         best = _INF
+        eps = get_epsilon()
 
         for s_state, s_ctrl in start_preds:
             for e_state, e_ctrl in end_preds:
@@ -3920,18 +3929,7 @@ class HC_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                     ctrl = subtract_control(s_ctrl, e_ctrl)
                     best = min(best, abs(ctrl.delta_s))
                 else:
-                    dist = 0.0
-                    eps = get_epsilon()
-                    if abs(s_state.kappa) < eps:
-                        if abs(e_state.kappa) < eps:
-                            dist += self._hc00.get_distance(s_state, e_state)
-                        else:
-                            dist += self._hc0pm.get_distance(s_state, e_state)
-                    else:
-                        if abs(e_state.kappa) < eps:
-                            dist += self._hcpm0.get_distance(s_state, e_state)
-                        else:
-                            dist += self._hcpmpm.get_distance(s_state, e_state)
+                    dist = self._select_sub_space(s_state, e_state).get_distance(s_state, e_state)
                     if abs(s_ctrl.delta_s) > eps:
                         dist += abs(s_ctrl.delta_s)
                     if abs(e_ctrl.delta_s) > eps:
@@ -3944,6 +3942,7 @@ class HC_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         start_preds = self.predict_state(state1)
         end_preds = self.predict_state(state2)
         candidates = []
+        eps = get_epsilon()
 
         for s_state, s_ctrl in start_preds:
             for e_state, e_ctrl in end_preds:
@@ -3952,17 +3951,7 @@ class HC_Reeds_Shepp_State_Space(HC_CC_StateSpace):
                     ctrl = subtract_control(s_ctrl, e_ctrl)
                     controls.append(ctrl)
                 else:
-                    eps = get_epsilon()
-                    if abs(s_state.kappa) < eps:
-                        if abs(e_state.kappa) < eps:
-                            controls = self._hc00.get_controls(s_state, e_state)
-                        else:
-                            controls = self._hc0pm.get_controls(s_state, e_state)
-                    else:
-                        if abs(e_state.kappa) < eps:
-                            controls = self._hcpm0.get_controls(s_state, e_state)
-                        else:
-                            controls = self._hcpmpm.get_controls(s_state, e_state)
+                    controls = self._select_sub_space(s_state, e_state).get_controls(s_state, e_state)
                     if abs(s_ctrl.delta_s) > eps:
                         controls.insert(0, s_ctrl)
                     if abs(e_ctrl.delta_s) > eps:
