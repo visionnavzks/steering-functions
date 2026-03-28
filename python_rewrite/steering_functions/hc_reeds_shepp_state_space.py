@@ -6,10 +6,10 @@ from steering_functions.state import State, Control
 from steering_functions.configuration import Configuration, configuration_distance, configuration_equal, configuration_aligned
 from steering_functions.hc_cc_circle import HC_CC_Circle, HC_CC_Circle_Param, center_distance, configuration_on_hc_cc_circle
 from steering_functions.paths import (
-    HC_CC_RS_Path, hc_cc_rs_path_type,
+    HC_CC_RS_Path, hc_cc_rs_path_type, nb_hc_cc_rs_paths,
     empty_controls, straight_controls, rs_turn_controls, hc_turn_controls,
     cc_turn_controls, reverse_control, subtract_control, state_equal,
-    _build_controls,
+    _build_controls, _evaluate_rs_families,
 )
 from steering_functions.utilities import (
     get_epsilon, sgn, point_distance, twopify, pify,
@@ -969,6 +969,24 @@ class HC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         hc_cc_rs_path_type.TcScT: [('hc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('hc', 'cend', 'qi2', False)],
     }
 
+    _FAMILY_REGISTRY = [
+        ('TT',      hc_cc_rs_path_type.TT,      ('length', 'cstart', 'cend', 'qi1'), False),
+        ('TcT',     hc_cc_rs_path_type.TcT,      ('length', 'cstart', 'cend', 'qi1'), False),
+        ('TcTcT',   hc_cc_rs_path_type.TcTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcTT',    hc_cc_rs_path_type.TcTT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TTcT',    hc_cc_rs_path_type.TTcT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TST',     hc_cc_rs_path_type.TST,      ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+        ('TSTcT',   hc_cc_rs_path_type.TSTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), True),
+        ('TcTST',   hc_cc_rs_path_type.TcTST,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), True),
+        ('TcTSTcT', hc_cc_rs_path_type.TcTSTcT,  ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1', 'ci2'), True),
+        ('TTcTT',   hc_cc_rs_path_type.TTcTT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2'), False),
+        ('TcTTcT',  hc_cc_rs_path_type.TcTTcT,   ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2'), False),
+        ('TTT',     hc_cc_rs_path_type.TTT,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcST',    hc_cc_rs_path_type.TcST,     ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+        ('TScT',    hc_cc_rs_path_type.TScT,     ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+        ('TcScT',   hc_cc_rs_path_type.TcScT,    ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+    ]
+
     def __init__(self, kappa, sigma, discretization=0.1):
         super().__init__(kappa, sigma, discretization)
         self._helper = _HC00_Reeds_Shepp(self)
@@ -985,7 +1003,7 @@ class HC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         h.angle = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
         p = self.hc_cc_circle_param_
 
-        N = 18
+        N = nb_hc_cc_rs_paths
         length = [_INF] * N
         qi1 = [None] * N
         qi2 = [None] * N
@@ -1019,107 +1037,8 @@ class HC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             skip = True
 
         if not skip:
-            # case TT
-            if h.TT_exists(c1, c2):
-                r = h.TT_path(c1, c2)
-                length[tp.TT] = r[0]
-                cstart[tp.TT], cend[tp.TT], qi1[tp.TT] = r[1], r[2], r[3]
-            # case TcT
-            if h.TcT_exists(c1, c2):
-                r = h.TcT_path(c1, c2)
-                length[tp.TcT] = r[0]
-                cstart[tp.TcT], cend[tp.TcT], qi1[tp.TcT] = r[1], r[2], r[3]
-            # case TcTcT
-            if h.TcTcT_exists(c1, c2):
-                r = h.TcTcT_path(c1, c2)
-                length[tp.TcTcT] = r[0]
-                cstart[tp.TcTcT], cend[tp.TcTcT] = r[1], r[2]
-                qi1[tp.TcTcT], qi2[tp.TcTcT], ci1[tp.TcTcT] = r[3], r[4], r[5]
-            # case TcTT
-            if h.TcTT_exists(c1, c2):
-                r = h.TcTT_path(c1, c2)
-                length[tp.TcTT] = r[0]
-                cstart[tp.TcTT], cend[tp.TcTT] = r[1], r[2]
-                qi1[tp.TcTT], qi2[tp.TcTT], ci1[tp.TcTT] = r[3], r[4], r[5]
-            # case TTcT
-            if h.TTcT_exists(c1, c2):
-                r = h.TTcT_path(c1, c2)
-                length[tp.TTcT] = r[0]
-                cstart[tp.TTcT], cend[tp.TTcT] = r[1], r[2]
-                qi1[tp.TTcT], qi2[tp.TTcT], ci1[tp.TTcT] = r[3], r[4], r[5]
-            # case TST
-            if h.TST_exists(c1, c2):
-                r = h.TST_path(c1, c2)
-                if r is not None:
-                    length[tp.TST] = r[0]
-                    cstart[tp.TST], cend[tp.TST] = r[1], r[2]
-                    qi1[tp.TST], qi2[tp.TST] = r[3], r[4]
-            # case TSTcT
-            if h.TSTcT_exists(c1, c2):
-                r = h.TSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TSTcT] = r[0]
-                    cstart[tp.TSTcT], cend[tp.TSTcT] = r[1], r[2]
-                    qi1[tp.TSTcT], qi2[tp.TSTcT] = r[3], r[4]
-                    qi3[tp.TSTcT], ci1[tp.TSTcT] = r[5], r[6]
-            # case TcTST
-            if h.TcTST_exists(c1, c2):
-                r = h.TcTST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTST] = r[0]
-                    cstart[tp.TcTST], cend[tp.TcTST] = r[1], r[2]
-                    qi1[tp.TcTST], qi2[tp.TcTST] = r[3], r[4]
-                    qi3[tp.TcTST], ci1[tp.TcTST] = r[5], r[6]
-            # case TcTSTcT
-            if h.TcTSTcT_exists(c1, c2):
-                r = h.TcTSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTSTcT] = r[0]
-                    cstart[tp.TcTSTcT], cend[tp.TcTSTcT] = r[1], r[2]
-                    qi1[tp.TcTSTcT], qi2[tp.TcTSTcT] = r[3], r[4]
-                    qi3[tp.TcTSTcT], qi4[tp.TcTSTcT] = r[5], r[6]
-                    ci1[tp.TcTSTcT], ci2[tp.TcTSTcT] = r[7], r[8]
-            # case TTcTT
-            if h.TTcTT_exists(c1, c2):
-                r = h.TTcTT_path(c1, c2)
-                length[tp.TTcTT] = r[0]
-                cstart[tp.TTcTT], cend[tp.TTcTT] = r[1], r[2]
-                qi1[tp.TTcTT], qi2[tp.TTcTT], qi3[tp.TTcTT] = r[3], r[4], r[5]
-                ci1[tp.TTcTT], ci2[tp.TTcTT] = r[6], r[7]
-            # case TcTTcT
-            if h.TcTTcT_exists(c1, c2):
-                r = h.TcTTcT_path(c1, c2)
-                length[tp.TcTTcT] = r[0]
-                cstart[tp.TcTTcT], cend[tp.TcTTcT] = r[1], r[2]
-                qi1[tp.TcTTcT], qi2[tp.TcTTcT], qi3[tp.TcTTcT] = r[3], r[4], r[5]
-                ci1[tp.TcTTcT], ci2[tp.TcTTcT] = r[6], r[7]
-            # case TTT
-            if h.TTT_exists(c1, c2):
-                r = h.TTT_path(c1, c2)
-                length[tp.TTT] = r[0]
-                cstart[tp.TTT], cend[tp.TTT] = r[1], r[2]
-                qi1[tp.TTT], qi2[tp.TTT], ci1[tp.TTT] = r[3], r[4], r[5]
-            # case TcST
-            if h.TcST_exists(c1, c2):
-                r = h.TcST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcST] = r[0]
-                    cstart[tp.TcST], cend[tp.TcST] = r[1], r[2]
-                    qi1[tp.TcST], qi2[tp.TcST] = r[3], r[4]
-            # case TScT
-            if h.TScT_exists(c1, c2):
-                r = h.TScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TScT] = r[0]
-                    cstart[tp.TScT], cend[tp.TScT] = r[1], r[2]
-                    qi1[tp.TScT], qi2[tp.TScT] = r[3], r[4]
-            # case TcScT
-            if h.TcScT_exists(c1, c2):
-                r = h.TcScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcScT] = r[0]
-                    cstart[tp.TcScT], cend[tp.TcScT] = r[1], r[2]
-                    qi1[tp.TcScT], qi2[tp.TcScT] = r[3], r[4]
+            length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2 = \
+                _evaluate_rs_families(h, c1, c2, self._FAMILY_REGISTRY)
 
         # select shortest
         best = min(range(N), key=lambda i: length[i])
@@ -1692,6 +1611,24 @@ class HC0pm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         hc_cc_rs_path_type.TcScT: [('hc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('rs', 'cend', 'qi2', False)],
     }
 
+    _FAMILY_REGISTRY = [
+        ('TT',      hc_cc_rs_path_type.TT,      ('length', 'cstart', 'cend', 'qi1', 'qi2'), False),
+        ('TcT',     hc_cc_rs_path_type.TcT,      ('length', 'cstart', 'cend', 'qi1'), False),
+        ('TcTcT',   hc_cc_rs_path_type.TcTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcTT',    hc_cc_rs_path_type.TcTT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TTcT',    hc_cc_rs_path_type.TTcT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TST',     hc_cc_rs_path_type.TST,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TSTcT',   hc_cc_rs_path_type.TSTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), True),
+        ('TcTST',   hc_cc_rs_path_type.TcTST,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1'), True),
+        ('TcTSTcT', hc_cc_rs_path_type.TcTSTcT,  ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1', 'ci2'), True),
+        ('TTcTT',   hc_cc_rs_path_type.TTcTT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2'), False),
+        ('TcTTcT',  hc_cc_rs_path_type.TcTTcT,   ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1', 'ci2'), False),
+        ('TTT',     hc_cc_rs_path_type.TTT,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), False),
+        ('TcST',    hc_cc_rs_path_type.TcST,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TScT',    hc_cc_rs_path_type.TScT,     ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+        ('TcScT',   hc_cc_rs_path_type.TcScT,    ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+    ]
+
     def __init__(self, kappa, sigma, discretization=0.1):
         import sys
         super().__init__(kappa, sigma, discretization)
@@ -1711,7 +1648,7 @@ class HC0pm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         h.angle = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
         p = self.hc_cc_circle_param_
 
-        N = 18
+        N = nb_hc_cc_rs_paths
         length = [_INF] * N
         qi1 = [None] * N
         qi2 = [None] * N
@@ -1737,110 +1674,8 @@ class HC0pm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             skip = True
 
         if not skip:
-            # case TT
-            if h.TT_exists(c1, c2):
-                r = h.TT_path(c1, c2)
-                length[tp.TT] = r[0]
-                cstart[tp.TT], cend[tp.TT] = r[1], r[2]
-                qi1[tp.TT], qi2[tp.TT] = r[3], r[4]
-            # case TcT
-            if h.TcT_exists(c1, c2):
-                r = h.TcT_path(c1, c2)
-                length[tp.TcT] = r[0]
-                cstart[tp.TcT], cend[tp.TcT], qi1[tp.TcT] = r[1], r[2], r[3]
-            # case TcTcT
-            if h.TcTcT_exists(c1, c2):
-                r = h.TcTcT_path(c1, c2)
-                length[tp.TcTcT] = r[0]
-                cstart[tp.TcTcT], cend[tp.TcTcT] = r[1], r[2]
-                qi1[tp.TcTcT], qi2[tp.TcTcT], ci1[tp.TcTcT] = r[3], r[4], r[5]
-            # case TcTT
-            if h.TcTT_exists(c1, c2):
-                r = h.TcTT_path(c1, c2)
-                length[tp.TcTT] = r[0]
-                cstart[tp.TcTT], cend[tp.TcTT] = r[1], r[2]
-                qi1[tp.TcTT], qi2[tp.TcTT], ci1[tp.TcTT] = r[3], r[4], r[5]
-            # case TTcT
-            if h.TTcT_exists(c1, c2):
-                r = h.TTcT_path(c1, c2)
-                length[tp.TTcT] = r[0]
-                cstart[tp.TTcT], cend[tp.TTcT] = r[1], r[2]
-                qi1[tp.TTcT], qi2[tp.TTcT], ci1[tp.TTcT] = r[3], r[4], r[5]
-            # case TST
-            if h.TST_exists(c1, c2):
-                r = h.TST_path(c1, c2)
-                if r is not None:
-                    length[tp.TST] = r[0]
-                    cstart[tp.TST], cend[tp.TST] = r[1], r[2]
-                    qi1[tp.TST], qi2[tp.TST], qi3[tp.TST] = r[3], r[4], r[5]
-            # case TSTcT
-            if h.TSTcT_exists(c1, c2):
-                r = h.TSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TSTcT] = r[0]
-                    cstart[tp.TSTcT], cend[tp.TSTcT] = r[1], r[2]
-                    qi1[tp.TSTcT], qi2[tp.TSTcT], qi3[tp.TSTcT] = r[3], r[4], r[5]
-                    ci1[tp.TSTcT] = r[6]
-            # case TcTST
-            if h.TcTST_exists(c1, c2):
-                r = h.TcTST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTST] = r[0]
-                    cstart[tp.TcTST], cend[tp.TcTST] = r[1], r[2]
-                    qi1[tp.TcTST], qi2[tp.TcTST] = r[3], r[4]
-                    qi3[tp.TcTST], qi4[tp.TcTST] = r[5], r[6]
-                    ci1[tp.TcTST] = r[7]
-            # case TcTSTcT
-            if h.TcTSTcT_exists(c1, c2):
-                r = h.TcTSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTSTcT] = r[0]
-                    cstart[tp.TcTSTcT], cend[tp.TcTSTcT] = r[1], r[2]
-                    qi1[tp.TcTSTcT], qi2[tp.TcTSTcT] = r[3], r[4]
-                    qi3[tp.TcTSTcT], qi4[tp.TcTSTcT] = r[5], r[6]
-                    ci1[tp.TcTSTcT], ci2[tp.TcTSTcT] = r[7], r[8]
-            # case TTcTT
-            if h.TTcTT_exists(c1, c2):
-                r = h.TTcTT_path(c1, c2)
-                length[tp.TTcTT] = r[0]
-                cstart[tp.TTcTT], cend[tp.TTcTT] = r[1], r[2]
-                qi1[tp.TTcTT], qi2[tp.TTcTT], qi3[tp.TTcTT] = r[3], r[4], r[5]
-                ci1[tp.TTcTT], ci2[tp.TTcTT] = r[6], r[7]
-            # case TcTTcT
-            if h.TcTTcT_exists(c1, c2):
-                r = h.TcTTcT_path(c1, c2)
-                length[tp.TcTTcT] = r[0]
-                cstart[tp.TcTTcT], cend[tp.TcTTcT] = r[1], r[2]
-                qi1[tp.TcTTcT], qi2[tp.TcTTcT] = r[3], r[4]
-                ci1[tp.TcTTcT], ci2[tp.TcTTcT] = r[5], r[6]
-            # case TTT
-            if h.TTT_exists(c1, c2):
-                r = h.TTT_path(c1, c2)
-                length[tp.TTT] = r[0]
-                cstart[tp.TTT], cend[tp.TTT] = r[1], r[2]
-                qi1[tp.TTT], qi2[tp.TTT], qi3[tp.TTT] = r[3], r[4], r[5]
-                ci1[tp.TTT] = r[6]
-            # case TcST
-            if h.TcST_exists(c1, c2):
-                r = h.TcST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcST] = r[0]
-                    cstart[tp.TcST], cend[tp.TcST] = r[1], r[2]
-                    qi1[tp.TcST], qi2[tp.TcST], qi3[tp.TcST] = r[3], r[4], r[5]
-            # case TScT
-            if h.TScT_exists(c1, c2):
-                r = h.TScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TScT] = r[0]
-                    cstart[tp.TScT], cend[tp.TScT] = r[1], r[2]
-                    qi1[tp.TScT], qi2[tp.TScT] = r[3], r[4]
-            # case TcScT
-            if h.TcScT_exists(c1, c2):
-                r = h.TcScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcScT] = r[0]
-                    cstart[tp.TcScT], cend[tp.TcScT] = r[1], r[2]
-                    qi1[tp.TcScT], qi2[tp.TcScT] = r[3], r[4]
+            length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2 = \
+                _evaluate_rs_families(h, c1, c2, self._FAMILY_REGISTRY)
 
         # select shortest
         best = min(range(N), key=lambda i: length[i])
@@ -2790,6 +2625,24 @@ class HCpm0_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         hc_cc_rs_path_type.TcScT: [('rs', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('hc', 'cend', 'qi2', False)],
     }
 
+    _FAMILY_REGISTRY = [
+        ('TT',      hc_cc_rs_path_type.TT,      ('length', 'cstart', 'cend', 'qi1', 'qi2'), False),
+        ('TcT',     hc_cc_rs_path_type.TcT,      ('length', 'cstart', 'cend', 'qi1'), False),
+        ('TcTcT',   hc_cc_rs_path_type.TcTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcTT',    hc_cc_rs_path_type.TcTT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TTcT',    hc_cc_rs_path_type.TTcT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TST',     hc_cc_rs_path_type.TST,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TSTcT',   hc_cc_rs_path_type.TSTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1'), True),
+        ('TcTST',   hc_cc_rs_path_type.TcTST,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), True),
+        ('TcTSTcT', hc_cc_rs_path_type.TcTSTcT,  ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1', 'ci2'), True),
+        ('TTcTT',   hc_cc_rs_path_type.TTcTT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2'), False),
+        ('TcTTcT',  hc_cc_rs_path_type.TcTTcT,   ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1', 'ci2'), False),
+        ('TTT',     hc_cc_rs_path_type.TTT,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcST',    hc_cc_rs_path_type.TcST,     ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+        ('TScT',    hc_cc_rs_path_type.TScT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TcScT',   hc_cc_rs_path_type.TcScT,    ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+    ]
+
     def __init__(self, kappa, sigma, discretization=0.1):
         import sys
         super().__init__(kappa, sigma, discretization)
@@ -2809,7 +2662,7 @@ class HCpm0_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         h.angle = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
         p = self.hc_cc_circle_param_
 
-        N = 18
+        N = nb_hc_cc_rs_paths
         length = [_INF] * N
         qi1 = [None] * N
         qi2 = [None] * N
@@ -2835,110 +2688,8 @@ class HCpm0_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             skip = True
 
         if not skip:
-            # case TT
-            if h.TT_exists(c1, c2):
-                r = h.TT_path(c1, c2)
-                length[tp.TT] = r[0]
-                cstart[tp.TT], cend[tp.TT] = r[1], r[2]
-                qi1[tp.TT], qi2[tp.TT] = r[3], r[4]
-            # case TcT
-            if h.TcT_exists(c1, c2):
-                r = h.TcT_path(c1, c2)
-                length[tp.TcT] = r[0]
-                cstart[tp.TcT], cend[tp.TcT], qi1[tp.TcT] = r[1], r[2], r[3]
-            # case TcTcT
-            if h.TcTcT_exists(c1, c2):
-                r = h.TcTcT_path(c1, c2)
-                length[tp.TcTcT] = r[0]
-                cstart[tp.TcTcT], cend[tp.TcTcT] = r[1], r[2]
-                qi1[tp.TcTcT], qi2[tp.TcTcT], ci1[tp.TcTcT] = r[3], r[4], r[5]
-            # case TcTT
-            if h.TcTT_exists(c1, c2):
-                r = h.TcTT_path(c1, c2)
-                length[tp.TcTT] = r[0]
-                cstart[tp.TcTT], cend[tp.TcTT] = r[1], r[2]
-                qi1[tp.TcTT], qi2[tp.TcTT], ci1[tp.TcTT] = r[3], r[4], r[5]
-            # case TTcT
-            if h.TTcT_exists(c1, c2):
-                r = h.TTcT_path(c1, c2)
-                length[tp.TTcT] = r[0]
-                cstart[tp.TTcT], cend[tp.TTcT] = r[1], r[2]
-                qi1[tp.TTcT], qi2[tp.TTcT], ci1[tp.TTcT] = r[3], r[4], r[5]
-            # case TST
-            if h.TST_exists(c1, c2):
-                r = h.TST_path(c1, c2)
-                if r is not None:
-                    length[tp.TST] = r[0]
-                    cstart[tp.TST], cend[tp.TST] = r[1], r[2]
-                    qi1[tp.TST], qi2[tp.TST], qi3[tp.TST] = r[3], r[4], r[5]
-            # case TSTcT
-            if h.TSTcT_exists(c1, c2):
-                r = h.TSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TSTcT] = r[0]
-                    cstart[tp.TSTcT], cend[tp.TSTcT] = r[1], r[2]
-                    qi1[tp.TSTcT], qi2[tp.TSTcT] = r[3], r[4]
-                    qi3[tp.TSTcT], qi4[tp.TSTcT] = r[5], r[6]
-                    ci1[tp.TSTcT] = r[7]
-            # case TcTST
-            if h.TcTST_exists(c1, c2):
-                r = h.TcTST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTST] = r[0]
-                    cstart[tp.TcTST], cend[tp.TcTST] = r[1], r[2]
-                    qi1[tp.TcTST], qi2[tp.TcTST], qi3[tp.TcTST] = r[3], r[4], r[5]
-                    ci1[tp.TcTST] = r[6]
-            # case TcTSTcT
-            if h.TcTSTcT_exists(c1, c2):
-                r = h.TcTSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTSTcT] = r[0]
-                    cstart[tp.TcTSTcT], cend[tp.TcTSTcT] = r[1], r[2]
-                    qi1[tp.TcTSTcT], qi2[tp.TcTSTcT] = r[3], r[4]
-                    qi3[tp.TcTSTcT], qi4[tp.TcTSTcT] = r[5], r[6]
-                    ci1[tp.TcTSTcT], ci2[tp.TcTSTcT] = r[7], r[8]
-            # case TTcTT
-            if h.TTcTT_exists(c1, c2):
-                r = h.TTcTT_path(c1, c2)
-                length[tp.TTcTT] = r[0]
-                cstart[tp.TTcTT], cend[tp.TTcTT] = r[1], r[2]
-                qi1[tp.TTcTT], qi2[tp.TTcTT], qi3[tp.TTcTT] = r[3], r[4], r[5]
-                ci1[tp.TTcTT], ci2[tp.TTcTT] = r[6], r[7]
-            # case TcTTcT
-            if h.TcTTcT_exists(c1, c2):
-                r = h.TcTTcT_path(c1, c2)
-                length[tp.TcTTcT] = r[0]
-                cstart[tp.TcTTcT], cend[tp.TcTTcT] = r[1], r[2]
-                qi1[tp.TcTTcT], qi2[tp.TcTTcT] = r[3], r[4]
-                ci1[tp.TcTTcT], ci2[tp.TcTTcT] = r[5], r[6]
-            # case TTT
-            if h.TTT_exists(c1, c2):
-                r = h.TTT_path(c1, c2)
-                length[tp.TTT] = r[0]
-                cstart[tp.TTT], cend[tp.TTT] = r[1], r[2]
-                qi1[tp.TTT], qi2[tp.TTT] = r[3], r[4]
-                ci1[tp.TTT] = r[5]
-            # case TcST
-            if h.TcST_exists(c1, c2):
-                r = h.TcST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcST] = r[0]
-                    cstart[tp.TcST], cend[tp.TcST] = r[1], r[2]
-                    qi1[tp.TcST], qi2[tp.TcST] = r[3], r[4]
-            # case TScT
-            if h.TScT_exists(c1, c2):
-                r = h.TScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TScT] = r[0]
-                    cstart[tp.TScT], cend[tp.TScT] = r[1], r[2]
-                    qi1[tp.TScT], qi2[tp.TScT], qi3[tp.TScT] = r[3], r[4], r[5]
-            # case TcScT
-            if h.TcScT_exists(c1, c2):
-                r = h.TcScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcScT] = r[0]
-                    cstart[tp.TcScT], cend[tp.TcScT] = r[1], r[2]
-                    qi1[tp.TcScT], qi2[tp.TcScT] = r[3], r[4]
+            length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2 = \
+                _evaluate_rs_families(h, c1, c2, self._FAMILY_REGISTRY)
 
         # select shortest
         best = min(range(N), key=lambda i: length[i])
@@ -3971,6 +3722,24 @@ class HCpmpm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         hc_cc_rs_path_type.TcScT: [('rs', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('rs', 'cend', 'qi2', False)],
     }
 
+    _FAMILY_REGISTRY = [
+        ('TT',      hc_cc_rs_path_type.TT,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), False),
+        ('TcT',     hc_cc_rs_path_type.TcT,      ('length', 'cstart', 'cend', 'qi1'), False),
+        ('TcTcT',   hc_cc_rs_path_type.TcTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TcTT',    hc_cc_rs_path_type.TcTT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TTcT',    hc_cc_rs_path_type.TTcT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1'), False),
+        ('TST',     hc_cc_rs_path_type.TST,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4'), True),
+        ('TSTcT',   hc_cc_rs_path_type.TSTcT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1'), True),
+        ('TcTST',   hc_cc_rs_path_type.TcTST,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1'), True),
+        ('TcTSTcT', hc_cc_rs_path_type.TcTSTcT,  ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1', 'ci2'), True),
+        ('TTcTT',   hc_cc_rs_path_type.TTcTT,    ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2'), False),
+        ('TcTTcT',  hc_cc_rs_path_type.TcTTcT,   ('length', 'cstart', 'cend', 'qi1', 'qi2', 'ci1', 'ci2'), False),
+        ('TTT',     hc_cc_rs_path_type.TTT,      ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1'), False),
+        ('TcST',    hc_cc_rs_path_type.TcST,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TScT',    hc_cc_rs_path_type.TScT,     ('length', 'cstart', 'cend', 'qi1', 'qi2', 'qi3'), True),
+        ('TcScT',   hc_cc_rs_path_type.TcScT,    ('length', 'cstart', 'cend', 'qi1', 'qi2'), True),
+    ]
+
     def __init__(self, kappa, sigma, discretization=0.1):
         import sys
         super().__init__(kappa, sigma, discretization)
@@ -3991,7 +3760,7 @@ class HCpmpm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         h.distance = center_distance(c1, c2)
         h.angle = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
 
-        N = 18
+        N = nb_hc_cc_rs_paths
         length = [_INF] * N
         qi1 = [None] * N
         qi2 = [None] * N
@@ -4017,112 +3786,8 @@ class HCpmpm_Reeds_Shepp_State_Space(HC_CC_StateSpace):
             skip = True
 
         if not skip:
-            # case TT
-            if h.TT_exists(c1, c2):
-                r = h.TT_path(c1, c2)
-                length[tp.TT] = r[0]
-                cstart[tp.TT], cend[tp.TT] = r[1], r[2]
-                qi1[tp.TT], qi2[tp.TT], qi3[tp.TT] = r[3], r[4], r[5]
-            # case TcT
-            if h.TcT_exists(c1, c2):
-                r = h.TcT_path(c1, c2)
-                length[tp.TcT] = r[0]
-                cstart[tp.TcT], cend[tp.TcT], qi1[tp.TcT] = r[1], r[2], r[3]
-            # case TcTcT
-            if h.TcTcT_exists(c1, c2):
-                r = h.TcTcT_path(c1, c2)
-                length[tp.TcTcT] = r[0]
-                cstart[tp.TcTcT], cend[tp.TcTcT] = r[1], r[2]
-                qi1[tp.TcTcT], qi2[tp.TcTcT], ci1[tp.TcTcT] = r[3], r[4], r[5]
-            # case TcTT
-            if h.TcTT_exists(c1, c2):
-                r = h.TcTT_path(c1, c2)
-                length[tp.TcTT] = r[0]
-                cstart[tp.TcTT], cend[tp.TcTT] = r[1], r[2]
-                qi1[tp.TcTT], qi2[tp.TcTT], ci1[tp.TcTT] = r[3], r[4], r[5]
-            # case TTcT
-            if h.TTcT_exists(c1, c2):
-                r = h.TTcT_path(c1, c2)
-                length[tp.TTcT] = r[0]
-                cstart[tp.TTcT], cend[tp.TTcT] = r[1], r[2]
-                qi1[tp.TTcT], qi2[tp.TTcT], ci1[tp.TTcT] = r[3], r[4], r[5]
-            # case TST
-            if h.TST_exists(c1, c2):
-                r = h.TST_path(c1, c2)
-                if r is not None:
-                    length[tp.TST] = r[0]
-                    cstart[tp.TST], cend[tp.TST] = r[1], r[2]
-                    qi1[tp.TST], qi2[tp.TST] = r[3], r[4]
-                    qi3[tp.TST], qi4[tp.TST] = r[5], r[6]
-            # case TSTcT
-            if h.TSTcT_exists(c1, c2):
-                r = h.TSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TSTcT] = r[0]
-                    cstart[tp.TSTcT], cend[tp.TSTcT] = r[1], r[2]
-                    qi1[tp.TSTcT], qi2[tp.TSTcT] = r[3], r[4]
-                    qi3[tp.TSTcT], qi4[tp.TSTcT] = r[5], r[6]
-                    ci1[tp.TSTcT] = r[7]
-            # case TcTST
-            if h.TcTST_exists(c1, c2):
-                r = h.TcTST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTST] = r[0]
-                    cstart[tp.TcTST], cend[tp.TcTST] = r[1], r[2]
-                    qi1[tp.TcTST], qi2[tp.TcTST] = r[3], r[4]
-                    qi3[tp.TcTST], qi4[tp.TcTST] = r[5], r[6]
-                    ci1[tp.TcTST] = r[7]
-            # case TcTSTcT
-            if h.TcTSTcT_exists(c1, c2):
-                r = h.TcTSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTSTcT] = r[0]
-                    cstart[tp.TcTSTcT], cend[tp.TcTSTcT] = r[1], r[2]
-                    qi1[tp.TcTSTcT], qi2[tp.TcTSTcT] = r[3], r[4]
-                    qi3[tp.TcTSTcT], qi4[tp.TcTSTcT] = r[5], r[6]
-                    ci1[tp.TcTSTcT], ci2[tp.TcTSTcT] = r[7], r[8]
-            # case TTcTT
-            if h.TTcTT_exists(c1, c2):
-                r = h.TTcTT_path(c1, c2)
-                length[tp.TTcTT] = r[0]
-                cstart[tp.TTcTT], cend[tp.TTcTT] = r[1], r[2]
-                qi1[tp.TTcTT], qi2[tp.TTcTT], qi3[tp.TTcTT] = r[3], r[4], r[5]
-                ci1[tp.TTcTT], ci2[tp.TTcTT] = r[6], r[7]
-            # case TcTTcT
-            if h.TcTTcT_exists(c1, c2):
-                r = h.TcTTcT_path(c1, c2)
-                length[tp.TcTTcT] = r[0]
-                cstart[tp.TcTTcT], cend[tp.TcTTcT] = r[1], r[2]
-                qi1[tp.TcTTcT], qi2[tp.TcTTcT] = r[3], r[4]
-                ci1[tp.TcTTcT], ci2[tp.TcTTcT] = r[5], r[6]
-            # case TTT
-            if h.TTT_exists(c1, c2):
-                r = h.TTT_path(c1, c2)
-                length[tp.TTT] = r[0]
-                cstart[tp.TTT], cend[tp.TTT] = r[1], r[2]
-                qi1[tp.TTT], qi2[tp.TTT], qi3[tp.TTT] = r[3], r[4], r[5]
-                ci1[tp.TTT] = r[6]
-            # case TcST
-            if h.TcST_exists(c1, c2):
-                r = h.TcST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcST] = r[0]
-                    cstart[tp.TcST], cend[tp.TcST] = r[1], r[2]
-                    qi1[tp.TcST], qi2[tp.TcST], qi3[tp.TcST] = r[3], r[4], r[5]
-            # case TScT
-            if h.TScT_exists(c1, c2):
-                r = h.TScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TScT] = r[0]
-                    cstart[tp.TScT], cend[tp.TScT] = r[1], r[2]
-                    qi1[tp.TScT], qi2[tp.TScT], qi3[tp.TScT] = r[3], r[4], r[5]
-            # case TcScT
-            if h.TcScT_exists(c1, c2):
-                r = h.TcScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcScT] = r[0]
-                    cstart[tp.TcScT], cend[tp.TcScT] = r[1], r[2]
-                    qi1[tp.TcScT], qi2[tp.TcScT] = r[3], r[4]
+            length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2 = \
+                _evaluate_rs_families(h, c1, c2, self._FAMILY_REGISTRY)
 
         # select shortest
         best = min(range(N), key=lambda i: length[i])

@@ -294,6 +294,52 @@ def cc_turn_controls(c, q, order, controls):
         return
 
 
+# ---------------------------------------------------------------------------
+# Shared family evaluation for Reeds-Shepp-type state spaces
+# ---------------------------------------------------------------------------
+
+def _evaluate_rs_families(helper, c1, c2, family_registry):
+    """Evaluate path families and collect results into arrays.
+
+    *family_registry* is a list of tuples::
+
+        (family_name, path_type, unpack_keys, nullable)
+
+    where *unpack_keys* is an ordered tuple of field names corresponding to the
+    positional return values of ``helper.<family_name>_path(c1, c2)``.
+
+    Returns ``(length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2)`` arrays
+    indexed by *path_type*.
+    """
+    N = nb_hc_cc_rs_paths
+    length = [float("inf")] * N
+    qi1 = [None] * N
+    qi2 = [None] * N
+    qi3 = [None] * N
+    qi4 = [None] * N
+    cstart = [None] * N
+    cend = [None] * N
+    ci1 = [None] * N
+    ci2 = [None] * N
+    _arrays = {
+        'length': length, 'qi1': qi1, 'qi2': qi2, 'qi3': qi3, 'qi4': qi4,
+        'cstart': cstart, 'cend': cend, 'ci1': ci1, 'ci2': ci2,
+    }
+
+    for family_name, path_type, keys, nullable in family_registry:
+        exists_fn = getattr(helper, family_name + '_exists')
+        if not exists_fn(c1, c2):
+            continue
+        path_fn = getattr(helper, family_name + '_path')
+        r = path_fn(c1, c2)
+        if nullable and r is None:
+            continue
+        for i, key in enumerate(keys):
+            _arrays[key][path_type] = r[i]
+
+    return length, qi1, qi2, qi3, qi4, cstart, cend, ci1, ci2
+
+
 def _build_controls(path, control_table):
     """Build controls from a path using a declarative control table.
 
