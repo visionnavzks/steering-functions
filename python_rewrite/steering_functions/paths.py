@@ -292,3 +292,32 @@ def cc_turn_controls(c, q, order, controls):
     else:
         cc_default_controls(c, q, delta, order, controls)
         return
+
+
+def _build_controls(path, control_table):
+    """Build controls from a path using a declarative control table.
+
+    *control_table* maps ``path.type`` → list of control steps.
+    Each step is a tuple:
+      - ``('empty',)``
+      - ``('straight', from_attr, to_attr)``
+      - ``('cc', circle_attr, config_attr, order)``
+      - ``('hc', circle_attr, config_attr, order)``
+      - ``('rs', circle_attr, config_attr, order)``
+
+    Attribute names are resolved via ``getattr(path, name)``.
+    """
+    steps = control_table.get(path.type)
+    if steps is None:
+        return []
+    controls = []
+    _TURN_FNS = {'cc': cc_turn_controls, 'hc': hc_turn_controls, 'rs': rs_turn_controls}
+    for step in steps:
+        op = step[0]
+        if op == 'empty':
+            empty_controls(controls)
+        elif op == 'straight':
+            straight_controls(getattr(path, step[1]), getattr(path, step[2]), controls)
+        else:
+            _TURN_FNS[op](getattr(path, step[1]), getattr(path, step[2]), step[3], controls)
+    return controls

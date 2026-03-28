@@ -42,6 +42,7 @@ from steering_functions.paths import (
     state_equal,
     subtract_control,
     reverse_control,
+    _build_controls,
 )
 from steering_functions.utilities import (
     get_epsilon,
@@ -251,6 +252,15 @@ class _CC00_Dubins:
 class CC00_Dubins_State_Space(HC_CC_StateSpace):
     """CC Dubins state space with zero curvature at start and end."""
 
+    _CONTROL_TABLE = {
+        cc_dubins_path_type.E: [('empty',)],
+        cc_dubins_path_type.S: [('straight', 'start', 'end')],
+        cc_dubins_path_type.T: [('cc', 'cstart', 'end', True)],
+        cc_dubins_path_type.TT: [('cc', 'cstart', 'qi1', True), ('cc', 'cend', 'qi1', False)],
+        cc_dubins_path_type.TST: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'cend', 'qi2', False)],
+        cc_dubins_path_type.TTT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1, forwards=True):
         super().__init__(kappa, sigma, discretization)
         self.forwards_ = forwards
@@ -369,27 +379,8 @@ class CC00_Dubins_State_Space(HC_CC_StateSpace):
         return p.length
 
     def get_controls(self, state1, state2):
-        controls = []
         p = self.cc00_dubins(state1, state2)
-        t = p.type
-        if t == cc_dubins_path_type.E:
-            empty_controls(controls)
-        elif t == cc_dubins_path_type.S:
-            straight_controls(p.start, p.end, controls)
-        elif t == cc_dubins_path_type.T:
-            cc_turn_controls(p.cstart, p.end, True, controls)
-        elif t == cc_dubins_path_type.TT:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            cc_turn_controls(p.cend, p.qi1, False, controls)
-        elif t == cc_dubins_path_type.TST:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            straight_controls(p.qi1, p.qi2, controls)
-            cc_turn_controls(p.cend, p.qi2, False, controls)
-        elif t == cc_dubins_path_type.TTT:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            cc_turn_controls(p.ci1, p.qi2, True, controls)
-            cc_turn_controls(p.cend, p.qi2, False, controls)
-        return controls
+        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -610,6 +601,14 @@ class _CC0pm_Dubins:
 class CC0pm_Dubins_State_Space(HC_CC_StateSpace):
     """CC Dubins state space with zero curvature at start and ±max at end."""
 
+    _CONTROL_TABLE = {
+        cc_dubins_path_type.E: [('empty',)],
+        cc_dubins_path_type.T: [('hc', 'cstart', 'end', True)],
+        cc_dubins_path_type.TT: [('cc', 'cstart', 'qi1', True), ('hc', 'cend', 'qi2', True)],
+        cc_dubins_path_type.TST: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('hc', 'cend', 'qi3', True)],
+        cc_dubins_path_type.TTT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('hc', 'cend', 'qi3', True)],
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1, forwards=True):
         super().__init__(kappa, sigma, discretization)
         self.forwards_ = forwards
@@ -731,25 +730,8 @@ class CC0pm_Dubins_State_Space(HC_CC_StateSpace):
         return p.length
 
     def get_controls(self, state1, state2):
-        controls = []
         p = self.cc0pm_dubins(state1, state2)
-        t = p.type
-        if t == cc_dubins_path_type.E:
-            empty_controls(controls)
-        elif t == cc_dubins_path_type.T:
-            hc_turn_controls(p.cstart, p.end, True, controls)
-        elif t == cc_dubins_path_type.TT:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            hc_turn_controls(p.cend, p.qi2, True, controls)
-        elif t == cc_dubins_path_type.TST:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            straight_controls(p.qi1, p.qi2, controls)
-            hc_turn_controls(p.cend, p.qi3, True, controls)
-        elif t == cc_dubins_path_type.TTT:
-            cc_turn_controls(p.cstart, p.qi1, True, controls)
-            cc_turn_controls(p.ci1, p.qi2, True, controls)
-            hc_turn_controls(p.cend, p.qi3, True, controls)
-        return controls
+        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -970,6 +952,14 @@ class _CCpm0_Dubins:
 class CCpm0_Dubins_State_Space(HC_CC_StateSpace):
     """CC Dubins state space with ±max curvature at start and zero at end."""
 
+    _CONTROL_TABLE = {
+        cc_dubins_path_type.E: [('empty',)],
+        cc_dubins_path_type.T: [('hc', 'cend', 'start', False)],
+        cc_dubins_path_type.TT: [('hc', 'cstart', 'qi1', False), ('cc', 'cend', 'qi2', False)],
+        cc_dubins_path_type.TST: [('hc', 'cstart', 'qi1', False), ('straight', 'qi2', 'qi3'), ('cc', 'cend', 'qi3', False)],
+        cc_dubins_path_type.TTT: [('hc', 'cstart', 'qi1', False), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1, forwards=True):
         super().__init__(kappa, sigma, discretization)
         self.forwards_ = forwards
@@ -1090,25 +1080,8 @@ class CCpm0_Dubins_State_Space(HC_CC_StateSpace):
         return p.length
 
     def get_controls(self, state1, state2):
-        controls = []
         p = self.ccpm0_dubins(state1, state2)
-        t = p.type
-        if t == cc_dubins_path_type.E:
-            empty_controls(controls)
-        elif t == cc_dubins_path_type.T:
-            hc_turn_controls(p.cend, p.start, False, controls)
-        elif t == cc_dubins_path_type.TT:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            cc_turn_controls(p.cend, p.qi2, False, controls)
-        elif t == cc_dubins_path_type.TST:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            straight_controls(p.qi2, p.qi3, controls)
-            cc_turn_controls(p.cend, p.qi3, False, controls)
-        elif t == cc_dubins_path_type.TTT:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            cc_turn_controls(p.ci1, p.qi2, True, controls)
-            cc_turn_controls(p.cend, p.qi2, False, controls)
-        return controls
+        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================
@@ -1424,6 +1397,15 @@ class _CCpmpm_Dubins:
 class CCpmpm_Dubins_State_Space(HC_CC_StateSpace):
     """CC Dubins state space with ±max curvature at both start and end."""
 
+    _CONTROL_TABLE = {
+        cc_dubins_path_type.E: [('empty',)],
+        cc_dubins_path_type.T: [('rs', 'cstart', 'end', True)],
+        cc_dubins_path_type.TT: [('hc', 'cstart', 'qi1', False), ('hc', 'cend', 'qi3', True)],
+        cc_dubins_path_type.TST: [('hc', 'cstart', 'qi1', False), ('straight', 'qi2', 'qi3'), ('hc', 'cend', 'qi4', True)],
+        cc_dubins_path_type.TTT: [('hc', 'cstart', 'qi1', False), ('cc', 'ci1', 'qi2', True), ('hc', 'cend', 'qi3', True)],
+        cc_dubins_path_type.TTTT: [('hc', 'cstart', 'qi1', False), ('cc', 'ci1', 'qi2', True), ('cc', 'ci2', 'qi2', False), ('hc', 'cend', 'qi3', True)],
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1, forwards=True):
         super().__init__(kappa, sigma, discretization)
         self.forwards_ = forwards
@@ -1569,30 +1551,8 @@ class CCpmpm_Dubins_State_Space(HC_CC_StateSpace):
         return p.length
 
     def get_controls(self, state1, state2):
-        controls = []
         p = self.ccpmpm_dubins(state1, state2)
-        t = p.type
-        if t == cc_dubins_path_type.E:
-            empty_controls(controls)
-        elif t == cc_dubins_path_type.T:
-            rs_turn_controls(p.cstart, p.end, True, controls)
-        elif t == cc_dubins_path_type.TT:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            hc_turn_controls(p.cend, p.qi3, True, controls)
-        elif t == cc_dubins_path_type.TST:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            straight_controls(p.qi2, p.qi3, controls)
-            hc_turn_controls(p.cend, p.qi4, True, controls)
-        elif t == cc_dubins_path_type.TTT:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            cc_turn_controls(p.ci1, p.qi2, True, controls)
-            hc_turn_controls(p.cend, p.qi3, True, controls)
-        elif t == cc_dubins_path_type.TTTT:
-            hc_turn_controls(p.cstart, p.qi1, False, controls)
-            cc_turn_controls(p.ci1, p.qi2, True, controls)
-            cc_turn_controls(p.ci2, p.qi2, False, controls)
-            hc_turn_controls(p.cend, p.qi3, True, controls)
-        return controls
+        return _build_controls(p, self._CONTROL_TABLE)
 
 
 # =============================================================================

@@ -18,6 +18,7 @@ from steering_functions.hc_cc_circle import (
 from steering_functions.paths import (
     HC_CC_RS_Path, hc_cc_rs_path_type,
     empty_controls, straight_controls, cc_turn_controls,
+    _build_controls,
 )
 from steering_functions.utilities import (
     get_epsilon, global_frame_change,
@@ -933,6 +934,27 @@ class _CC00_Reeds_Shepp:
 class CC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
     """CC Reeds-Shepp with zero curvature at start and end (G² continuous)."""
 
+    _CONTROL_TABLE = {
+        hc_cc_rs_path_type.E: [('empty',)],
+        hc_cc_rs_path_type.S: [('straight', 'start', 'end')],
+        hc_cc_rs_path_type.T: [('cc', 'cstart', 'end', True)],
+        hc_cc_rs_path_type.TT: [('cc', 'cstart', 'qi1', True), ('cc', 'cend', 'qi1', False)],
+        hc_cc_rs_path_type.TcT: [('cc', 'cstart', 'qi1', True), ('cc', 'cend', 'qi1', False)],
+        hc_cc_rs_path_type.TcTcT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TcTT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TTcT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TST: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TSTcT: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'ci1', 'qi3', True), ('cc', 'cend', 'qi3', False)],
+        hc_cc_rs_path_type.TcTST: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('straight', 'qi2', 'qi3'), ('cc', 'cend', 'qi3', False)],
+        hc_cc_rs_path_type.TcTSTcT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('straight', 'qi2', 'qi3'), ('cc', 'ci2', 'qi4', True), ('cc', 'cend', 'qi4', False)],
+        hc_cc_rs_path_type.TTcTT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'ci2', 'qi3', True), ('cc', 'cend', 'qi3', False)],
+        hc_cc_rs_path_type.TcTTcT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'ci2', 'qi3', True), ('cc', 'cend', 'qi3', False)],
+        hc_cc_rs_path_type.TTT: [('cc', 'cstart', 'qi1', True), ('cc', 'ci1', 'qi2', True), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TcST: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TScT: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'cend', 'qi2', False)],
+        hc_cc_rs_path_type.TcScT: [('cc', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc', 'cend', 'qi2', False)],
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1):
         super().__init__(kappa, sigma, discretization)
         self._helper = _CC00_Reeds_Shepp(self)
@@ -1124,56 +1146,5 @@ class CC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
 
     # ------------------------------------------------------------------
     def get_controls(self, state1, state2):
-        tp = hc_cc_rs_path_type
         path = self.cc00_reeds_shepp(state1, state2)
-        controls = []
-        t = path.type
-
-        if t == tp.E:
-            empty_controls(controls)
-        elif t == tp.S:
-            straight_controls(path.start, path.end, controls)
-        elif t == tp.T:
-            cc_turn_controls(path.cstart, path.end, True, controls)
-        elif t in (tp.TT, tp.TcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.cend, path.qi1, False, controls)
-        elif t in (tp.TcTcT, tp.TcTT, tp.TTcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t == tp.TST:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t == tp.TSTcT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.ci1, path.qi3, True, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TcTST:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            straight_controls(path.qi2, path.qi3, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TcTSTcT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            straight_controls(path.qi2, path.qi3, controls)
-            cc_turn_controls(path.ci2, path.qi4, True, controls)
-            cc_turn_controls(path.cend, path.qi4, False, controls)
-        elif t in (tp.TTcTT, tp.TcTTcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.ci2, path.qi3, True, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TTT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t in (tp.TcST, tp.TScT, tp.TcScT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-
-        return controls
+        return _build_controls(path, self._CONTROL_TABLE)
