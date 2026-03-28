@@ -274,7 +274,7 @@ pub fn cc_elementary_controls(
 
 pub fn cc_default_controls(
     c: &HcCcCircle,
-    q: &Configuration,
+    _q: &Configuration,
     delta: f64,
     order: bool,
     controls: &mut Vec<Control>,

@@ -168,7 +168,7 @@ fn shortest_dubins_path(
     (best, best_len * rho)
 }
 
-fn controls_from_dubins(path: &DubinsPath, rho: f64, forward: bool, dx: f64, dy: f64) -> Vec<Control> {
+fn controls_from_dubins(path: &DubinsPath, rho: f64, forward: bool, _dx: f64, _dy: f64) -> Vec<Control> {
     let d = if forward { 1.0 } else { -1.0 };
     let mut controls = Vec::new();
     for i in 0..3 {

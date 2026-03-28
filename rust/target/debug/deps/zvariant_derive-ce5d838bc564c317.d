@@ -1,0 +1,10 @@
+/home/runner/work/steering-functions/steering-functions/rust/target/debug/deps/zvariant_derive-ce5d838bc564c317.d: /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/dict.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/type.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/utils.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/value.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/../README.md
+
+/home/runner/work/steering-functions/steering-functions/rust/target/debug/deps/libzvariant_derive-ce5d838bc564c317.so: /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/dict.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/type.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/utils.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/value.rs /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/../README.md
+
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/lib.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/dict.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/type.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/utils.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/value.rs:
+/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-4.2.0/src/../README.md:
