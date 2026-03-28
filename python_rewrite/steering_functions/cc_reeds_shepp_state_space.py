@@ -23,6 +23,11 @@ from steering_functions.utilities import (
     get_epsilon, global_frame_change,
     PI, HALF_PI,
 )
+from steering_functions._helpers import (
+    _direction_sign, _theta_pi, _make_tangent_point,
+    _evaluate_families, _make_path_arrays, _select_best_path,
+    _dispatch_controls,
+)
 
 _INF = float("inf")
 _CC_REGULAR = False
@@ -247,56 +252,21 @@ class _CC00_Reeds_Shepp:
         alpha = math.asin(2 * c1.radius * c1.cos_mu / dist)
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
-        if c1.left and c1.forward:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        theta = angle + s * alpha
+        th_off = _theta_pi(c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, s * dy, th_off, 0)
         return q1, q2
 
     def TeST_tangent_circles(self, c1, c2):
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
         theta = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        th_off = _theta_pi(c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, -s * dy, th_off, 0)
         return q1, q2
 
     def TiST_path(self, c1, c2):
@@ -675,31 +645,12 @@ class _CC00_Reeds_Shepp:
         alpha = math.asin(2 * c1.radius * c1.cos_mu / self.distance)
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        theta = self.angle - s * alpha
+        th_off = _theta_pi(not c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, -s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -710,27 +661,11 @@ class _CC00_Reeds_Shepp:
         theta = self.angle
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        th_off = _theta_pi(not c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -766,31 +701,12 @@ class _CC00_Reeds_Shepp:
         alpha = math.asin(2 * c1.radius * c1.cos_mu / self.distance)
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        theta = self.angle + s * alpha
+        th_off = _theta_pi(c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -801,27 +717,11 @@ class _CC00_Reeds_Shepp:
         theta = self.angle
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        th_off = _theta_pi(c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -857,31 +757,12 @@ class _CC00_Reeds_Shepp:
         alpha = math.asin(2 * c1.radius * c1.cos_mu / self.distance)
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        theta = self.angle - s * alpha
+        th_off = _theta_pi(not c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -892,27 +773,11 @@ class _CC00_Reeds_Shepp:
         theta = self.angle
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        th_off = _theta_pi(not c1.forward)
         p = self._p()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, 0)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, th_off, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, th_off, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -933,6 +798,53 @@ class _CC00_Reeds_Shepp:
 class CC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
     """CC Reeds-Shepp with zero curvature at start and end (G² continuous)."""
 
+    _tp = hc_cc_rs_path_type
+
+    _FAMILIES = [
+        (_tp.TT, 'TT', False, ('cstart', 'cend', 'qi1')),
+        (_tp.TcT, 'TcT', False, ('cstart', 'cend', 'qi1')),
+        (_tp.TcTcT, 'TcTcT', False, ('cstart', 'cend', 'qi1', 'qi2', 'ci1')),
+        (_tp.TcTT, 'TcTT', False, ('cstart', 'cend', 'qi1', 'qi2', 'ci1')),
+        (_tp.TTcT, 'TTcT', False, ('cstart', 'cend', 'qi1', 'qi2', 'ci1')),
+        (_tp.TST, 'TST', True, ('cstart', 'cend', 'qi1', 'qi2')),
+        (_tp.TSTcT, 'TSTcT', True, ('cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1')),
+        (_tp.TcTST, 'TcTST', True, ('cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1')),
+        (_tp.TcTSTcT, 'TcTSTcT', True, ('cstart', 'cend', 'qi1', 'qi2', 'qi3', 'qi4', 'ci1', 'ci2')),
+        (_tp.TTcTT, 'TTcTT', False, ('cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2')),
+        (_tp.TcTTcT, 'TcTTcT', False, ('cstart', 'cend', 'qi1', 'qi2', 'qi3', 'ci1', 'ci2')),
+        (_tp.TTT, 'TTT', False, ('cstart', 'cend', 'qi1', 'qi2', 'ci1')),
+        (_tp.TcST, 'TcST', True, ('cstart', 'cend', 'qi1', 'qi2')),
+        (_tp.TScT, 'TScT', True, ('cstart', 'cend', 'qi1', 'qi2')),
+        (_tp.TcScT, 'TcScT', True, ('cstart', 'cend', 'qi1', 'qi2')),
+    ]
+
+    _CONTROLS_TABLE = {
+        _tp.E: [('empty',)],
+        _tp.S: [('straight', 'start', 'end')],
+        _tp.T: [('cc_turn', 'cstart', 'end', True)],
+        _tp.TT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'cend', 'qi1', False)],
+        _tp.TcT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'cend', 'qi1', False)],
+        _tp.TcTcT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TcTT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TTcT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TST: [('cc_turn', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TSTcT: [('cc_turn', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc_turn', 'ci1', 'qi3', True), ('cc_turn', 'cend', 'qi3', False)],
+        _tp.TcTST: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('straight', 'qi2', 'qi3'), ('cc_turn', 'cend', 'qi3', False)],
+        _tp.TcTSTcT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('straight', 'qi2', 'qi3'), ('cc_turn', 'ci2', 'qi4', True), ('cc_turn', 'cend', 'qi4', False)],
+        _tp.TTcTT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'ci2', 'qi3', True), ('cc_turn', 'cend', 'qi3', False)],
+        _tp.TcTTcT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'ci2', 'qi3', True), ('cc_turn', 'cend', 'qi3', False)],
+        _tp.TTT: [('cc_turn', 'cstart', 'qi1', True), ('cc_turn', 'ci1', 'qi2', True), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TcST: [('cc_turn', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TScT: [('cc_turn', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc_turn', 'cend', 'qi2', False)],
+        _tp.TcScT: [('cc_turn', 'cstart', 'qi1', True), ('straight', 'qi1', 'qi2'), ('cc_turn', 'cend', 'qi2', False)],
+    }
+
+    _CONTROL_FNS = {
+        'empty': empty_controls,
+        'straight': straight_controls,
+        'cc_turn': cc_turn_controls,
+    }
+
     def __init__(self, kappa, sigma, discretization=0.1):
         super().__init__(kappa, sigma, discretization)
         self._helper = _CC00_Reeds_Shepp(self)
@@ -947,149 +859,37 @@ class CC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
         p = self.hc_cc_circle_param_
 
         N = 18
-        length = [_INF] * N
-        qi1 = [None] * N
-        qi2 = [None] * N
-        qi3 = [None] * N
-        qi4 = [None] * N
-        cstart = [None] * N
-        cend = [None] * N
-        ci1 = [None] * N
-        ci2 = [None] * N
+        arrays = _make_path_arrays(N)
 
         skip = False
 
         # case E
         if configuration_equal(c1.start, c2.start):
-            length[tp.E] = 0
+            arrays['length'][tp.E] = 0
             skip = True
 
         # case S
         if not skip and configuration_aligned(c1.start, c2.start):
-            length[tp.S] = configuration_distance(c1.start, c2.start)
+            arrays['length'][tp.S] = configuration_distance(c1.start, c2.start)
             skip = True
         if not skip and configuration_aligned(c2.start, c1.start):
-            length[tp.S] = configuration_distance(c2.start, c1.start)
+            arrays['length'][tp.S] = configuration_distance(c2.start, c1.start)
             skip = True
 
         # case T
         if not skip and configuration_on_hc_cc_circle(c1, c2.start):
-            cstart[tp.T] = HC_CC_Circle(
+            arrays['cstart'][tp.T] = HC_CC_Circle(
                 c1.start, c1.left, c1.forward, _CC_REGULAR, p)
-            length[tp.T] = cstart[tp.T].cc_turn_length(c2.start)
+            arrays['length'][tp.T] = arrays['cstart'][tp.T].cc_turn_length(c2.start)
             skip = True
 
         if not skip:
-            # case TT
-            if h.TT_exists(c1, c2):
-                r = h.TT_path(c1, c2)
-                length[tp.TT] = r[0]
-                cstart[tp.TT], cend[tp.TT], qi1[tp.TT] = r[1], r[2], r[3]
-            # case TcT
-            if h.TcT_exists(c1, c2):
-                r = h.TcT_path(c1, c2)
-                length[tp.TcT] = r[0]
-                cstart[tp.TcT], cend[tp.TcT], qi1[tp.TcT] = r[1], r[2], r[3]
-            # case TcTcT
-            if h.TcTcT_exists(c1, c2):
-                r = h.TcTcT_path(c1, c2)
-                length[tp.TcTcT] = r[0]
-                cstart[tp.TcTcT], cend[tp.TcTcT] = r[1], r[2]
-                qi1[tp.TcTcT], qi2[tp.TcTcT], ci1[tp.TcTcT] = r[3], r[4], r[5]
-            # case TcTT
-            if h.TcTT_exists(c1, c2):
-                r = h.TcTT_path(c1, c2)
-                length[tp.TcTT] = r[0]
-                cstart[tp.TcTT], cend[tp.TcTT] = r[1], r[2]
-                qi1[tp.TcTT], qi2[tp.TcTT], ci1[tp.TcTT] = r[3], r[4], r[5]
-            # case TTcT
-            if h.TTcT_exists(c1, c2):
-                r = h.TTcT_path(c1, c2)
-                length[tp.TTcT] = r[0]
-                cstart[tp.TTcT], cend[tp.TTcT] = r[1], r[2]
-                qi1[tp.TTcT], qi2[tp.TTcT], ci1[tp.TTcT] = r[3], r[4], r[5]
-            # case TST
-            if h.TST_exists(c1, c2):
-                r = h.TST_path(c1, c2)
-                if r is not None:
-                    length[tp.TST] = r[0]
-                    cstart[tp.TST], cend[tp.TST] = r[1], r[2]
-                    qi1[tp.TST], qi2[tp.TST] = r[3], r[4]
-            # case TSTcT
-            if h.TSTcT_exists(c1, c2):
-                r = h.TSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TSTcT] = r[0]
-                    cstart[tp.TSTcT], cend[tp.TSTcT] = r[1], r[2]
-                    qi1[tp.TSTcT], qi2[tp.TSTcT] = r[3], r[4]
-                    qi3[tp.TSTcT], ci1[tp.TSTcT] = r[5], r[6]
-            # case TcTST
-            if h.TcTST_exists(c1, c2):
-                r = h.TcTST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTST] = r[0]
-                    cstart[tp.TcTST], cend[tp.TcTST] = r[1], r[2]
-                    qi1[tp.TcTST], qi2[tp.TcTST] = r[3], r[4]
-                    qi3[tp.TcTST], ci1[tp.TcTST] = r[5], r[6]
-            # case TcTSTcT
-            if h.TcTSTcT_exists(c1, c2):
-                r = h.TcTSTcT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcTSTcT] = r[0]
-                    cstart[tp.TcTSTcT], cend[tp.TcTSTcT] = r[1], r[2]
-                    qi1[tp.TcTSTcT], qi2[tp.TcTSTcT] = r[3], r[4]
-                    qi3[tp.TcTSTcT], qi4[tp.TcTSTcT] = r[5], r[6]
-                    ci1[tp.TcTSTcT], ci2[tp.TcTSTcT] = r[7], r[8]
-            # case TTcTT
-            if h.TTcTT_exists(c1, c2):
-                r = h.TTcTT_path(c1, c2)
-                length[tp.TTcTT] = r[0]
-                cstart[tp.TTcTT], cend[tp.TTcTT] = r[1], r[2]
-                qi1[tp.TTcTT], qi2[tp.TTcTT], qi3[tp.TTcTT] = r[3], r[4], r[5]
-                ci1[tp.TTcTT], ci2[tp.TTcTT] = r[6], r[7]
-            # case TcTTcT
-            if h.TcTTcT_exists(c1, c2):
-                r = h.TcTTcT_path(c1, c2)
-                length[tp.TcTTcT] = r[0]
-                cstart[tp.TcTTcT], cend[tp.TcTTcT] = r[1], r[2]
-                qi1[tp.TcTTcT], qi2[tp.TcTTcT], qi3[tp.TcTTcT] = r[3], r[4], r[5]
-                ci1[tp.TcTTcT], ci2[tp.TcTTcT] = r[6], r[7]
-            # case TTT
-            if h.TTT_exists(c1, c2):
-                r = h.TTT_path(c1, c2)
-                length[tp.TTT] = r[0]
-                cstart[tp.TTT], cend[tp.TTT] = r[1], r[2]
-                qi1[tp.TTT], qi2[tp.TTT], ci1[tp.TTT] = r[3], r[4], r[5]
-            # case TcST
-            if h.TcST_exists(c1, c2):
-                r = h.TcST_path(c1, c2)
-                if r is not None:
-                    length[tp.TcST] = r[0]
-                    cstart[tp.TcST], cend[tp.TcST] = r[1], r[2]
-                    qi1[tp.TcST], qi2[tp.TcST] = r[3], r[4]
-            # case TScT
-            if h.TScT_exists(c1, c2):
-                r = h.TScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TScT] = r[0]
-                    cstart[tp.TScT], cend[tp.TScT] = r[1], r[2]
-                    qi1[tp.TScT], qi2[tp.TScT] = r[3], r[4]
-            # case TcScT
-            if h.TcScT_exists(c1, c2):
-                r = h.TcScT_path(c1, c2)
-                if r is not None:
-                    length[tp.TcScT] = r[0]
-                    cstart[tp.TcScT], cend[tp.TcScT] = r[1], r[2]
-                    qi1[tp.TcScT], qi2[tp.TcScT] = r[3], r[4]
+            _evaluate_families(h, c1, c2, self._FAMILIES, arrays)
 
-        # select shortest
-        best = min(range(N), key=lambda i: length[i])
-        return HC_CC_RS_Path(
-            c1.start, c2.start, hc_cc_rs_path_type(best),
+        return _select_best_path(
+            arrays, N, c1.start, c2.start,
             self.kappa_, self.sigma_,
-            qi1[best], qi2[best], qi3[best], qi4[best],
-            cstart[best], cend[best], ci1[best], ci2[best],
-            length[best])
+            HC_CC_RS_Path, hc_cc_rs_path_type)
 
     # ------------------------------------------------------------------
     def cc00_reeds_shepp(self, state1, state2):
@@ -1124,56 +924,5 @@ class CC00_Reeds_Shepp_State_Space(HC_CC_StateSpace):
 
     # ------------------------------------------------------------------
     def get_controls(self, state1, state2):
-        tp = hc_cc_rs_path_type
         path = self.cc00_reeds_shepp(state1, state2)
-        controls = []
-        t = path.type
-
-        if t == tp.E:
-            empty_controls(controls)
-        elif t == tp.S:
-            straight_controls(path.start, path.end, controls)
-        elif t == tp.T:
-            cc_turn_controls(path.cstart, path.end, True, controls)
-        elif t in (tp.TT, tp.TcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.cend, path.qi1, False, controls)
-        elif t in (tp.TcTcT, tp.TcTT, tp.TTcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t == tp.TST:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t == tp.TSTcT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.ci1, path.qi3, True, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TcTST:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            straight_controls(path.qi2, path.qi3, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TcTSTcT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            straight_controls(path.qi2, path.qi3, controls)
-            cc_turn_controls(path.ci2, path.qi4, True, controls)
-            cc_turn_controls(path.cend, path.qi4, False, controls)
-        elif t in (tp.TTcTT, tp.TcTTcT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.ci2, path.qi3, True, controls)
-            cc_turn_controls(path.cend, path.qi3, False, controls)
-        elif t == tp.TTT:
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            cc_turn_controls(path.ci1, path.qi2, True, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-        elif t in (tp.TcST, tp.TScT, tp.TcScT):
-            cc_turn_controls(path.cstart, path.qi1, True, controls)
-            straight_controls(path.qi1, path.qi2, controls)
-            cc_turn_controls(path.cend, path.qi2, False, controls)
-
-        return controls
+        return _dispatch_controls(path, self._CONTROLS_TABLE, self._CONTROL_FNS)

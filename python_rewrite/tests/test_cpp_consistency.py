@@ -28,7 +28,7 @@ from pathlib import Path
 # Make sure the Python steering_functions package is importable.
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PY_ROOT = _REPO_ROOT / "python"
+_PY_ROOT = _REPO_ROOT / "python_rewrite"
 if str(_PY_ROOT) not in sys.path:
     sys.path.insert(0, str(_PY_ROOT))
 
