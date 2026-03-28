@@ -1673,10 +1673,22 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
 
         return states_controls
 
+    def _select_sub_space(self, start_state, end_state):
+        """Select the appropriate sub-space based on start/end curvature."""
+        eps = get_epsilon()
+        if abs(start_state.kappa) < eps:
+            if abs(end_state.kappa) < eps:
+                return self.cc00_dubins_state_space_
+            return self.cc0pm_dubins_state_space_
+        if abs(end_state.kappa) < eps:
+            return self.ccpm0_dubins_state_space_
+        return self.ccpmpm_dubins_state_space_
+
     def get_distance(self, state1, state2):
         start_scs = self.predict_state(state1, self.forwards_)
         end_scs = self.predict_state(state2, not self.forwards_)
         distances = []
+        eps = get_epsilon()
 
         for start_state, start_control in start_scs:
             for end_state, end_control in end_scs:
@@ -1684,28 +1696,11 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
                     ctrl = subtract_control(start_control, end_control)
                     distances.append(abs(ctrl.delta_s))
                 else:
-                    distance = 0.0
-                    if abs(start_state.kappa) < get_epsilon():
-                        if abs(end_state.kappa) < get_epsilon():
-                            distance += self.cc00_dubins_state_space_.get_distance(
-                                start_state, end_state
-                            )
-                        else:
-                            distance += self.cc0pm_dubins_state_space_.get_distance(
-                                start_state, end_state
-                            )
-                    else:
-                        if abs(end_state.kappa) < get_epsilon():
-                            distance += self.ccpm0_dubins_state_space_.get_distance(
-                                start_state, end_state
-                            )
-                        else:
-                            distance += self.ccpmpm_dubins_state_space_.get_distance(
-                                start_state, end_state
-                            )
-                    if abs(start_control.delta_s) > get_epsilon():
+                    distance = self._select_sub_space(start_state, end_state).get_distance(
+                        start_state, end_state)
+                    if abs(start_control.delta_s) > eps:
                         distance += abs(start_control.delta_s)
-                    if abs(end_control.delta_s) > get_epsilon():
+                    if abs(end_control.delta_s) > eps:
                         distance += abs(end_control.delta_s)
                     distances.append(distance)
 
@@ -1715,6 +1710,7 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
         start_scs = self.predict_state(state1, self.forwards_)
         end_scs = self.predict_state(state2, not self.forwards_)
         controls_distance_pairs = []
+        eps = get_epsilon()
 
         for start_state, start_control in start_scs:
             for end_state, end_control in end_scs:
@@ -1723,36 +1719,11 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
                     ctrl = subtract_control(start_control, end_control)
                     cc_dubins_controls.append(ctrl)
                 else:
-                    if abs(start_state.kappa) < get_epsilon():
-                        if abs(end_state.kappa) < get_epsilon():
-                            cc_dubins_controls = (
-                                self.cc00_dubins_state_space_.get_controls(
-                                    start_state, end_state
-                                )
-                            )
-                        else:
-                            cc_dubins_controls = (
-                                self.cc0pm_dubins_state_space_.get_controls(
-                                    start_state, end_state
-                                )
-                            )
-                    else:
-                        if abs(end_state.kappa) < get_epsilon():
-                            cc_dubins_controls = (
-                                self.ccpm0_dubins_state_space_.get_controls(
-                                    start_state, end_state
-                                )
-                            )
-                        else:
-                            cc_dubins_controls = (
-                                self.ccpmpm_dubins_state_space_.get_controls(
-                                    start_state, end_state
-                                )
-                            )
-                    # adjust controls by initial and final control
-                    if abs(start_control.delta_s) > get_epsilon():
+                    cc_dubins_controls = self._select_sub_space(
+                        start_state, end_state).get_controls(start_state, end_state)
+                    if abs(start_control.delta_s) > eps:
                         cc_dubins_controls.insert(0, start_control)
-                    if abs(end_control.delta_s) > get_epsilon():
+                    if abs(end_control.delta_s) > eps:
                         ec = Control(
                             delta_s=end_control.delta_s,
                             kappa=end_control.kappa,
