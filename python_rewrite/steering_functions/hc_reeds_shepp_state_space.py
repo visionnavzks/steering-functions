@@ -15,6 +15,11 @@ from steering_functions.utilities import (
     global_frame_change, local_frame_change,
     PI, TWO_PI, HALF_PI, end_of_clothoid,
 )
+from steering_functions._helpers import (
+    _direction_sign, _theta_pi, _make_tangent_point,
+    _evaluate_families, _make_path_arrays, _select_best_path,
+    _dispatch_controls,
+)
 
 _INF = float("inf")
 
@@ -248,56 +253,21 @@ class _HC00_Reeds_Shepp:
         alpha = math.asin(2 * c1.radius * c1.cos_mu / dist)
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
-        if c1.left and c1.forward:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, s * dy, tp, 0)
         return q1, q2
 
     def TeST_tangent_circles(self, c1, c2):
         dx = c1.radius * c1.sin_mu
         dy = c1.radius * c1.cos_mu
         theta = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, -s * dy, tp, 0)
         return q1, q2
 
     def TiST_path(self, c1, c2):
@@ -679,31 +649,12 @@ class _HC00_Reeds_Shepp:
         dx1, dy1 = 0.0, abs(c1.kappa_inv)
         dx2 = c1.radius * c1.sin_mu
         dy2 = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, -s * dy2, tp, 0)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -715,31 +666,12 @@ class _HC00_Reeds_Shepp:
         dx1, dy1 = 0.0, abs(c1.kappa_inv)
         dx2 = c1.radius * c1.sin_mu
         dy2 = c1.radius * c1.cos_mu
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, s * dy2, tp, 0)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, _CC_REGULAR, p)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -780,31 +712,12 @@ class _HC00_Reeds_Shepp:
         dx1 = c1.radius * c1.sin_mu
         dy1 = c1.radius * c1.cos_mu
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, s * dy2, tp, c2.kappa)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -816,31 +729,12 @@ class _HC00_Reeds_Shepp:
         dx1 = c1.radius * c1.sin_mu
         dy1 = c1.radius * c1.cos_mu
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, -s * dy2, tp, c2.kappa)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -875,31 +769,12 @@ class _HC00_Reeds_Shepp:
     def TciScT_path(self, c1, c2):
         alpha = math.asin(2 / (abs(c1.kappa) * self.distance))
         dx, dy = 0.0, abs(c1.kappa_inv)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, tp, c2.kappa)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -907,29 +782,13 @@ class _HC00_Reeds_Shepp:
         return length, cstart, cend, q1, q2
 
     def TceScT_path(self, c1, c2):
-        theta = self.angle
         dx, dy = 0.0, abs(c1.kappa_inv)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, tp, c2.kappa)
         p = self._p()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -1511,30 +1370,11 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = c1.radius * c1.sin_mu
         dy2 = c1.radius * c1.cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, -s * dy2, tp, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(q2, c2.left, not c2.forward, _HC_REGULAR, p)
         q3 = Configuration(c2.start.x, c2.start.y, c2.start.theta, c2.kappa)
@@ -1548,30 +1388,11 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = c1.radius * c1.sin_mu
         dy2 = c1.radius * c1.cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, s * dy2, tp, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(q2, c2.left, not c2.forward, _HC_REGULAR, p)
         q3 = Configuration(c2.start.x, c2.start.y, c2.start.theta, c2.kappa)
@@ -1587,30 +1408,11 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
         p = self._p()
         rsp = self._rsp()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, s * dy2, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, rsp)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -1624,30 +1426,11 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
         p = self._p()
         rsp = self._rsp()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, -s * dy2, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, _CC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, rsp)
         length = (cstart.cc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -1660,30 +1443,11 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx, dy = 0.0, abs(c1.kappa_inv)
         p = self._p()
         rsp = self._rsp()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, rsp)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -1695,26 +1459,10 @@ class _HC0pm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx, dy = 0.0, abs(c1.kappa_inv)
         p = self._p()
         rsp = self._rsp()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, rsp)
         length = (cstart.hc_turn_length(q1) + configuration_distance(q1, q2) +
@@ -2185,30 +1933,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         alpha = math.asin(2 * c2.radius * c2.cos_mu / dist)
         dx = c2.radius * c2.sin_mu
         dy = c2.radius * c2.cos_mu
-        if c1.left and c1.forward:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, s * dy, tp, 0)
         return q1, q2
 
     def TeST_exists(self, c1, c2):
@@ -2222,26 +1951,10 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx = c2.radius * c2.sin_mu
         dy = c2.radius * c2.cos_mu
         theta = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, -s * dy, tp, 0)
         return q1, q2
 
     def TiST_path(self, c1, c2):
@@ -2624,30 +2337,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = c2.radius * c2.sin_mu
         dy2 = c2.radius * c2.cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, -s * dy2, tp, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(
@@ -2664,30 +2358,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = c2.radius * c2.sin_mu
         dy2 = c2.radius * c2.cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, s * dy2, tp, 0)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(
@@ -2723,30 +2398,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         dy1 = c2.radius * c2.cos_mu
         dx2, dy2 = 0.0, abs(c2.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q2 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q3 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, s * dy2, tp, c2.kappa)
         cstart = HC_CC_Circle(
             q2, c1.left, not c1.forward, _HC_REGULAR, p)
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
@@ -2763,30 +2419,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         dy1 = c2.radius * c2.cos_mu
         dx2, dy2 = 0.0, abs(c2.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q2 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q3 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, -s * dy2, tp, c2.kappa)
         q1 = Configuration(c1.start.x, c1.start.y, c1.start.theta, c1.kappa)
         cstart = HC_CC_Circle(
             q2, c1.left, not c1.forward, _HC_REGULAR, p)
@@ -2808,30 +2445,11 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         alpha = math.asin(2 / (abs(c2.kappa) * self.distance))
         dx, dy = 0.0, abs(c2.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
@@ -2844,26 +2462,10 @@ class _HCpm0_Reeds_Shepp(_HC00_Reeds_Shepp):
         theta = self.angle
         dx, dy = 0.0, abs(c2.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular, p)
@@ -3344,30 +2946,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         alpha = math.asin(2 * radius * cos_mu / dist)
         dx = radius * sin_mu
         dy = radius * cos_mu
-        if c1.left and c1.forward:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            theta = angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            theta = angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, s * dy, tp, 0)
         return q1, q2
 
     def TeST_exists(self, c1, c2):
@@ -3385,26 +2968,10 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx = radius * sin_mu
         dy = radius * cos_mu
         theta = math.atan2(c2.yc - c1.yc, c2.xc - c1.xc)
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta, 0)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, dy)
-            q1 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, dy)
-            q2 = Configuration(x, y, theta, 0)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx, -dy)
-            q1 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx, -dy)
-            q2 = Configuration(x, y, theta + PI, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, dx, -s * dy, tp, 0)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx, -s * dy, tp, 0)
         return q1, q2
 
     def TiST_path(self, c1, c2):
@@ -3832,30 +3399,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = radius * sin_mu
         dy2 = radius * cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, -s * dy2, tp, 0)
         q3 = Configuration(c2.start.x, c2.start.y, c2.start.theta, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
@@ -3876,30 +3424,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dx2 = radius * sin_mu
         dy2 = radius * cos_mu
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta, 0)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, -dy1)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, -dy2)
-            q2 = Configuration(x, y, theta + PI, 0)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx1, dy1)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, -dx2, dy2)
-            q2 = Configuration(x, y, theta, 0)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle + s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx1, s * dy1, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, -dx2, s * dy2, tp, 0)
         q3 = Configuration(c2.start.x, c2.start.y, c2.start.theta, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
@@ -3945,30 +3474,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dy1 = radius * cos_mu
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q2 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q3 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, s * dy2, tp, c2.kappa)
         q1 = Configuration(c1.start.x, c1.start.y, c1.start.theta, c1.kappa)
         cstart = HC_CC_Circle(
             q2, c1.left, not c1.forward, _HC_REGULAR, p)
@@ -3989,30 +3499,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
         dy1 = radius * cos_mu
         dx2, dy2 = 0.0, abs(c1.kappa_inv)
         p = self._p()
-        if c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, dy1)
-            q2 = Configuration(x, y, theta, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, dy2)
-            q3 = Configuration(x, y, theta, c2.kappa)
-        else:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, dx1, -dy1)
-            q2 = Configuration(x, y, theta + PI, 0)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx2, -dy2)
-            q3 = Configuration(x, y, theta + PI, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(c1.forward)
+        theta = self.angle + s * alpha
+        q2 = _make_tangent_point(c1.xc, c1.yc, theta, dx1, -s * dy1, tp, 0)
+        q3 = _make_tangent_point(c2.xc, c2.yc, theta, dx2, -s * dy2, tp, c2.kappa)
         q1 = Configuration(c1.start.x, c1.start.y, c1.start.theta, c1.kappa)
         cstart = HC_CC_Circle(
             q2, c1.left, not c1.forward, _HC_REGULAR, p)
@@ -4041,30 +3532,11 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
     def TciScT_path(self, c1, c2):
         alpha = math.asin(2 / (abs(c1.kappa) * self.distance))
         dx, dy = 0.0, abs(c1.kappa_inv)
-        if c1.left and c1.forward:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            theta = self.angle + alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            theta = self.angle - alpha
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        theta = self.angle - s * alpha
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, -s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular,
@@ -4077,26 +3549,10 @@ class _HCpmpm_Reeds_Shepp(_HC00_Reeds_Shepp):
     def TceScT_path(self, c1, c2):
         theta = self.angle
         dx, dy = 0.0, abs(c1.kappa_inv)
-        if c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        elif c1.left and not c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
-        elif not c1.left and c1.forward:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, -dy)
-            q1 = Configuration(x, y, theta + PI, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, -dy)
-            q2 = Configuration(x, y, theta + PI, c2.kappa)
-        else:
-            x, y = global_frame_change(c1.xc, c1.yc, theta, -dx, dy)
-            q1 = Configuration(x, y, theta, c1.kappa)
-            x, y = global_frame_change(c2.xc, c2.yc, theta, dx, dy)
-            q2 = Configuration(x, y, theta, c2.kappa)
+        s = _direction_sign(c1.left, c1.forward)
+        tp = _theta_pi(not c1.forward)
+        q1 = _make_tangent_point(c1.xc, c1.yc, theta, -dx, s * dy, tp, c1.kappa)
+        q2 = _make_tangent_point(c2.xc, c2.yc, theta, dx, s * dy, tp, c2.kappa)
         cstart = HC_CC_Circle(c1.start, c1.left, c1.forward, c1.regular,
                               self._rsp())
         cend = HC_CC_Circle(c2.start, c2.left, c2.forward, c2.regular,
