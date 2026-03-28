@@ -1032,3 +1032,371 @@ impl<'a> Hc00RsHelper<'a> {
         else { None }
     }
 }
+
+// ---------------------------------------------------------------------------
+// HC00 circles → shortest RS path
+// ---------------------------------------------------------------------------
+
+fn hc00_circles_rs_path(
+    c1: &HcCcCircle,
+    c2: &HcCcCircle,
+    param: &HcCcCircleParam,
+    rs_param: &HcCcCircleParam,
+) -> HcCcRsPath {
+    use HcCcRsPathType::*;
+
+    let mut h = Hc00RsHelper::new(param, rs_param);
+    h.distance = center_distance(c1, c2);
+    h.angle = (c2.yc - c1.yc).atan2(c2.xc - c1.xc);
+
+    let mut slots: Vec<PathSlot> = (0..NB_HC_CC_RS_PATHS).map(|_| PathSlot::infinite()).collect();
+
+    let mut skip = false;
+
+    // case E
+    if configuration_equal(&c1.start, &c2.start) {
+        slots[E as usize].length = 0.0;
+        skip = true;
+    }
+
+    // case S
+    if !skip {
+        if configuration_aligned(&c1.start, &c2.start) {
+            slots[S as usize].length = configuration_distance(&c1.start, &c2.start);
+            skip = true;
+        } else if configuration_aligned(&c2.start, &c1.start) {
+            slots[S as usize].length = configuration_distance(&c2.start, &c1.start);
+            skip = true;
+        }
+    }
+
+    // case T
+    if !skip && configuration_on_hc_cc_circle(c1, &c2.start) {
+        let cs = HcCcCircle::from_configuration(c1.start, c1.left, c1.forward, CC_REGULAR, param);
+        slots[T as usize].length = cs.cc_turn_length(&c2.start);
+        slots[T as usize].cstart = Some(cs);
+        skip = true;
+    }
+
+    if !skip {
+        if h.tt_exists(c1, c2) {
+            slots[TT as usize] = h.tt_path(c1, c2);
+        }
+        if h.tct_exists(c1, c2) {
+            slots[TcT as usize] = h.tct_path(c1, c2);
+        }
+        if h.tctct_exists(c1, c2) {
+            slots[TcTcT as usize] = h.tctct_path(c1, c2);
+        }
+        if h.tctt_exists(c1, c2) {
+            slots[TcTT as usize] = h.tctt_path(c1, c2);
+        }
+        if h.ttct_exists(c1, c2) {
+            slots[TTcT as usize] = h.ttct_path(c1, c2);
+        }
+        if h.tst_exists(c1, c2) {
+            if let Some(s) = h.tst_path(c1, c2) {
+                slots[TST as usize] = s;
+            }
+        }
+        if h.tstct_exists(c1, c2) {
+            if let Some(s) = h.tstct_path(c1, c2) {
+                slots[TSTcT as usize] = s;
+            }
+        }
+        if h.tctst_exists(c1, c2) {
+            if let Some(s) = h.tctst_path(c1, c2) {
+                slots[TcTST as usize] = s;
+            }
+        }
+        if h.tctcstct_exists(c1, c2) {
+            if let Some(s) = h.tctcstct_path(c1, c2) {
+                slots[TcTSTcT as usize] = s;
+            }
+        }
+        if h.ttctt_exists(c1, c2) {
+            slots[TTcTT as usize] = h.ttctt_path(c1, c2);
+        }
+        if h.tctTct_exists(c1, c2) {
+            slots[TcTTcT as usize] = h.tctTct_path(c1, c2);
+        }
+        if h.ttt_exists(c1, c2) {
+            slots[TTT as usize] = h.ttt_path(c1, c2);
+        }
+        if h.tcst_exists(c1, c2) {
+            if let Some(s) = h.tcst_path(c1, c2) {
+                slots[TcST as usize] = s;
+            }
+        }
+        if h.tsct_exists(c1, c2) {
+            if let Some(s) = h.tsct_path(c1, c2) {
+                slots[TScT as usize] = s;
+            }
+        }
+        if h.tcsct_exists(c1, c2) {
+            if let Some(s) = h.tcsct_path(c1, c2) {
+                slots[TcScT as usize] = s;
+            }
+        }
+    }
+
+    let best = (0..NB_HC_CC_RS_PATHS)
+        .min_by(|&a, &b| slots[a].length.partial_cmp(&slots[b].length).unwrap())
+        .unwrap();
+
+    let s = &slots[best];
+    HcCcRsPath::new(
+        c1.start,
+        c2.start,
+        path_type_from_usize(best),
+        param.kappa,
+        param.sigma,
+        s.qi1,
+        s.qi2,
+        s.qi3,
+        s.qi4,
+        s.cstart.clone().map(Box::new),
+        s.cend.clone().map(Box::new),
+        s.ci1.clone().map(Box::new),
+        s.ci2.clone().map(Box::new),
+        s.length,
+    )
+}
+
+// ---------------------------------------------------------------------------
+// HC00 Reeds-Shepp state space
+// ---------------------------------------------------------------------------
+
+/// HC00 Reeds-Shepp state space — zero curvature at both start and end.
+pub struct Hc00RsStateSpace {
+    params_: HcCcStateSpaceParams,
+    rs_circle_param_: HcCcCircleParam,
+    discretization_: f64,
+}
+
+impl Hc00RsStateSpace {
+    pub fn new(kappa: f64, sigma: f64, discretization: f64) -> Self {
+        let params = HcCcStateSpaceParams::new(kappa, sigma);
+        let mut rs_param = HcCcCircleParam::default();
+        rs_param.set_param(kappa, f64::MAX, 1.0 / kappa, 0.0, 0.0, 1.0, 0.0);
+        Self {
+            params_: params,
+            rs_circle_param_: rs_param,
+            discretization_: discretization,
+        }
+    }
+
+    fn hc00_reeds_shepp(&self, state1: &State, state2: &State) -> HcCcRsPath {
+        let start = Configuration::new(state1.x, state1.y, state1.theta, 0.0);
+        let end = Configuration::new(state2.x, state2.y, state2.theta, 0.0);
+        let p = &self.params_.hc_cc_circle_param_;
+
+        let start_circles = [
+            HcCcCircle::from_configuration(start, true, true, true, p),
+            HcCcCircle::from_configuration(start, false, true, true, p),
+            HcCcCircle::from_configuration(start, true, false, true, p),
+            HcCcCircle::from_configuration(start, false, false, true, p),
+        ];
+        let end_circles = [
+            HcCcCircle::from_configuration(end, true, true, true, p),
+            HcCcCircle::from_configuration(end, false, true, true, p),
+            HcCcCircle::from_configuration(end, true, false, true, p),
+            HcCcCircle::from_configuration(end, false, false, true, p),
+        ];
+
+        let mut best: Option<HcCcRsPath> = None;
+        for sc in &start_circles {
+            for ec in &end_circles {
+                let path = hc00_circles_rs_path(sc, ec, p, &self.rs_circle_param_);
+                if best.as_ref().map_or(true, |b| path.length < b.length) {
+                    best = Some(path);
+                }
+            }
+        }
+        best.unwrap()
+    }
+}
+
+impl StateSpace for Hc00RsStateSpace {
+    fn get_controls(&self, s1: &State, s2: &State) -> Vec<Control> {
+        let path = self.hc00_reeds_shepp(s1, s2);
+        let mut controls: Vec<Control> = Vec::new();
+
+        match path.path_type {
+            HcCcRsPathType::E => {
+                empty_controls(&mut controls);
+            }
+            HcCcRsPathType::S => {
+                straight_controls(&path.start, &path.end, &mut controls);
+            }
+            HcCcRsPathType::T => {
+                let cs = path.cstart.as_ref().unwrap();
+                cc_turn_controls(cs, &path.end, true, &mut controls);
+            }
+            HcCcRsPathType::TT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                cc_turn_controls(ce, q1, false, &mut controls);
+            }
+            HcCcRsPathType::TcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ce, q1, false, &mut controls);
+            }
+            HcCcRsPathType::TcTcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                rs_turn_controls(ci, q2, true, &mut controls);
+                hc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TcTT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci, q1, false, &mut controls);
+                cc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TTcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci, q2, true, &mut controls);
+                hc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TST => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                straight_controls(q1, q2, &mut controls);
+                cc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TSTcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                let q3 = path.qi3.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                straight_controls(q1, q2, &mut controls);
+                hc_turn_controls(ci, q3, true, &mut controls);
+                hc_turn_controls(ce, q3, false, &mut controls);
+            }
+            HcCcRsPathType::TcTST => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                let q3 = path.qi3.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci, q1, false, &mut controls);
+                straight_controls(q2, q3, &mut controls);
+                cc_turn_controls(ce, q3, false, &mut controls);
+            }
+            HcCcRsPathType::TcTSTcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci1 = path.ci1.as_ref().unwrap();
+                let ci2 = path.ci2.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                let q3 = path.qi3.as_ref().unwrap();
+                let q4 = path.qi4.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci1, q1, false, &mut controls);
+                straight_controls(q2, q3, &mut controls);
+                hc_turn_controls(ci2, q4, true, &mut controls);
+                hc_turn_controls(ce, q4, false, &mut controls);
+            }
+            HcCcRsPathType::TTcTT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci1 = path.ci1.as_ref().unwrap();
+                let ci2 = path.ci2.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                let q3 = path.qi3.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci1, q2, true, &mut controls);
+                hc_turn_controls(ci2, q2, false, &mut controls);
+                cc_turn_controls(ce, q3, false, &mut controls);
+            }
+            HcCcRsPathType::TcTTcT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci1 = path.ci1.as_ref().unwrap();
+                let ci2 = path.ci2.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q3 = path.qi3.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                hc_turn_controls(ci1, q1, false, &mut controls);
+                hc_turn_controls(ci2, q3, true, &mut controls);
+                hc_turn_controls(ce, q3, false, &mut controls);
+            }
+            HcCcRsPathType::TTT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let ci = path.ci1.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                cc_turn_controls(ci, q2, true, &mut controls);
+                cc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TcST => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                straight_controls(q1, q2, &mut controls);
+                cc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TScT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                cc_turn_controls(cs, q1, true, &mut controls);
+                straight_controls(q1, q2, &mut controls);
+                hc_turn_controls(ce, q2, false, &mut controls);
+            }
+            HcCcRsPathType::TcScT => {
+                let cs = path.cstart.as_ref().unwrap();
+                let ce = path.cend.as_ref().unwrap();
+                let q1 = path.qi1.as_ref().unwrap();
+                let q2 = path.qi2.as_ref().unwrap();
+                hc_turn_controls(cs, q1, true, &mut controls);
+                straight_controls(q1, q2, &mut controls);
+                hc_turn_controls(ce, q2, false, &mut controls);
+            }
+        }
+
+        controls
+    }
+
+    fn get_all_controls(&self, s1: &State, s2: &State) -> Vec<Vec<Control>> {
+        vec![self.get_controls(s1, s2)]
+    }
+
+    fn discretization(&self) -> f64 {
+        self.discretization_
+    }
+}
