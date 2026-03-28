@@ -1773,7 +1773,7 @@ class CC_Dubins_State_Space(HC_CC_StateSpace):
         cc_dubins_controls = self.get_controls(state2, state1)
         cc_dubins_controls.reverse()
         for ctrl in cc_dubins_controls:
-            ctrl.delta_s = -ctrl.delta_s
+            reverse_control(ctrl)
         return cc_dubins_controls
 
     def get_all_controls(self, state1, state2):
