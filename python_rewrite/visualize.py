@@ -11,15 +11,10 @@ Interaction
 * **Right panel – Method**: choose the steering algorithm.
 * **Right panel – Mode**: *Best* (shortest path only) or *All* (every candidate path).
 * **kappa_max / sigma_max sliders**: tune robot constraints.
-* **Click / drag on the plot**:
-    - First click a point → sets the *position* (x, y) of the active state.
-    - Click-and-drag → also sets the *heading* (θ) from the drag direction.
-* **[Set: Start] / [Set: Goal] buttons**: choose which state the next click modifies.
+* **State text boxes**: edit start/goal x, y, and heading directly.
 
 Keyboard shortcuts
 ------------------
-* ``s`` – switch active state to Start
-* ``g`` – switch active state to Goal
 * ``r`` – reset to default start/goal
 """
 
@@ -28,7 +23,7 @@ from __future__ import annotations
 import math
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import matplotlib
 import matplotlib.patches as mpatches
@@ -79,9 +74,6 @@ _DEFAULT_KAPPA_MAX = 1.0   # 1/m
 _DEFAULT_SIGMA_MAX = 1.0   # 1/m²
 _DISCRETIZATION   = 0.02   # m
 
-# Minimum drag distance (px) needed to read a heading from a click-drag
-_DRAG_THRESHOLD_PX = 5
-
 
 # ---------------------------------------------------------------------------
 # Helper: extract (x, y) arrays from a list of State objects
@@ -125,10 +117,6 @@ class SteeringVisualizer:
         self.kappa_max  : float = _DEFAULT_KAPPA_MAX
         self.sigma_max  : float = _DEFAULT_SIGMA_MAX
 
-        # Mouse interaction state
-        self._press_xy   : Optional[tuple[float, float]] = None  # data coords
-        self._press_px   : Optional[tuple[float, float]] = None  # pixel coords
-        self._active     : str  = "Start"  # which state is being set
         self._updating_textboxes: bool = False  # guard against recursive TextBox callbacks
 
         self._setup_figure()
@@ -171,19 +159,8 @@ class SteeringVisualizer:
             lbl.set_fontsize(9)
         self.radio_mode.on_clicked(self._on_mode_change)
 
-        # ── Active-state buttons ───────────────────────────────────────
-        ax_btn_start = self.fig.add_axes([0.66, 0.145, 0.145, 0.045])
-        ax_btn_goal  = self.fig.add_axes([0.82, 0.145, 0.145, 0.045])
-        self.btn_start = Button(ax_btn_start, "● Set Start",  color="#c8f0c8", hovercolor="#a0e0a0")
-        self.btn_goal  = Button(ax_btn_goal,  "● Set Goal",   color="#f0c8c8", hovercolor="#e0a0a0")
-        self.btn_start.label.set_fontsize(9)
-        self.btn_goal.label.set_fontsize(9)
-        self.btn_start.on_clicked(lambda _: self._set_active("Start"))
-        self.btn_goal .on_clicked(lambda _: self._set_active("Goal"))
-        self._highlight_active_button()
-
         # ── kappa_max slider ──────────────────────────────────────────
-        ax_kappa = self.fig.add_axes([0.66, 0.093, 0.31, 0.025])
+        ax_kappa = self.fig.add_axes([0.66, 0.145, 0.31, 0.025])
         self.slider_kappa = Slider(
             ax_kappa, "κ_max", 0.1, 5.0,
             valinit=_DEFAULT_KAPPA_MAX, valstep=0.05, color="#4a90d9",
@@ -192,7 +169,7 @@ class SteeringVisualizer:
         self.slider_kappa.on_changed(self._on_kappa_change)
 
         # ── sigma_max slider ──────────────────────────────────────────
-        ax_sigma = self.fig.add_axes([0.66, 0.053, 0.31, 0.025])
+        ax_sigma = self.fig.add_axes([0.66, 0.105, 0.31, 0.025])
         self.slider_sigma = Slider(
             ax_sigma, "σ_max", 0.1, 5.0,
             valinit=_DEFAULT_SIGMA_MAX, valstep=0.05, color="#4ab04a",
@@ -221,8 +198,8 @@ class SteeringVisualizer:
                       color="#d62728")
         self.fig.text(
             0.505, 0.079,
-            "Click/drag to set position & heading  "
-            "|  ↵ Enter to apply  |  Keys: [s] Start  [g] Goal  [r] Reset  [R] Randomize",
+            "Edit state values in the text boxes  "
+            "|  ↵ Enter to apply  |  Keys: [r] Reset  [R] Randomize",
             fontsize=7.5, color="#666666",
         )
 
@@ -264,8 +241,6 @@ class SteeringVisualizer:
     # Event connection
     # ------------------------------------------------------------------
     def _connect_events(self) -> None:
-        self.fig.canvas.mpl_connect("button_press_event",   self._on_mouse_press)
-        self.fig.canvas.mpl_connect("button_release_event", self._on_mouse_release)
         self.fig.canvas.mpl_connect("key_press_event",      self._on_key)
 
     # ------------------------------------------------------------------
@@ -293,66 +268,11 @@ class SteeringVisualizer:
         self._sync_textboxes()
         self._compute_and_draw()
 
-    def _set_active(self, which: str) -> None:
-        self._active = which
-        self._highlight_active_button()
-        self.fig.canvas.draw_idle()
-
-    def _highlight_active_button(self) -> None:
-        if self._active == "Start":
-            self.btn_start.ax.set_facecolor("#80d880")
-            self.btn_goal .ax.set_facecolor("#f0c8c8")
-        else:
-            self.btn_start.ax.set_facecolor("#c8f0c8")
-            self.btn_goal .ax.set_facecolor("#e06060")
-
     # ------------------------------------------------------------------
-    # Mouse / keyboard handlers
+    # Keyboard handlers
     # ------------------------------------------------------------------
-    def _on_mouse_press(self, event) -> None:
-        if event.inaxes is not self.ax:
-            return
-        self._press_xy = (event.xdata, event.ydata)
-        # Store pixel coords to measure drag distance later
-        self._press_px = (event.x, event.y)
-
-    def _on_mouse_release(self, event) -> None:
-        if self._press_xy is None:
-            return
-        if event.inaxes is not self.ax or event.xdata is None:
-            self._press_xy = None
-            return
-
-        px0, py0 = self._press_px
-        drag_dist_px = math.hypot(event.x - px0, event.y - py0)
-        x0, y0 = self._press_xy
-
-        if drag_dist_px >= _DRAG_THRESHOLD_PX:
-            # Derive heading from drag direction
-            theta = math.atan2(event.ydata - y0, event.xdata - x0)
-        else:
-            # Keep current heading
-            if self._active == "Start":
-                theta = self.start.theta
-            else:
-                theta = self.goal.theta
-
-        new_state = State(x=x0, y=y0, theta=theta)
-        if self._active == "Start":
-            self.start = new_state
-        else:
-            self.goal = new_state
-
-        self._press_xy = None
-        self._sync_textboxes()
-        self._compute_and_draw()
-
     def _on_key(self, event) -> None:
-        if event.key == "s":
-            self._set_active("Start")
-        elif event.key == "g":
-            self._set_active("Goal")
-        elif event.key == "r":
+        if event.key == "r":
             self._on_reset(None)
         elif event.key == "R":
             self._on_randomize(None)
