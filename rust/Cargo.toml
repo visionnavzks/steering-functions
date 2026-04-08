@@ -1,0 +1,24 @@
+[package]
+name = "steering-functions"
+version = "0.1.0"
+edition = "2021"
+description = "Steering functions for car-like robots – Rust port of python_rewrite"
+authors = []
+license = "Apache-2.0"
+
+[[bin]]
+name = "visualizer"
+path = "src/main.rs"
+
+[lib]
+name = "steering_functions"
+path = "src/lib.rs"
+
+[dependencies]
+eframe = { version = "0.29", features = ["default"] }
+egui = "0.29"
+egui_plot = "0.29"
+rand = "0.8"
+
+[profile.release]
+opt-level = 3
