@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from steering_functions.state import State, Control
-from steering_functions.utilities import TWO_PI, twopify
+from steering_functions.utilities import TWO_PI, twopify, pify
 from steering_functions.base_state_space import BaseStateSpace
 
 # ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ def _dubins_LRL(d: float, alpha: float, beta: float) -> DubinsPath:
 
 def _dubins_shortest(d: float, alpha: float, beta: float) -> DubinsPath:
     """Select the shortest Dubins path among all six types."""
-    if d < _DUBINS_EPS and abs(alpha - beta) < _DUBINS_EPS:
+    if d < _DUBINS_EPS and abs(pify(alpha - beta)) < _DUBINS_EPS:
         return DubinsPath(list(DUBINS_PATH_TYPE[0]), [0.0, d, 0.0])
 
     path = _dubins_LSL(d, alpha, beta)
