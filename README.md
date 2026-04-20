@@ -90,6 +90,33 @@ goal = State(4.0, 2.0, 1.0)
 path = planner.computeShortestPath(start, goal)
 ```
 
+## Rust
+
+The `rust/` crate contains the Rust port. It now also exposes Python bindings through PyO3/maturin.
+
+Build-check the Rust crate:
+
+```bash
+cd rust
+cargo check
+```
+
+Install the Rust Python bindings into the active environment:
+
+```bash
+cd rust
+uv run --with maturin maturin develop
+```
+
+Launch the Rust-backed visualizer:
+
+```bash
+cd rust
+uv run --with matplotlib python -m steering_functions_rust.visualize
+```
+
+Current Rust binding coverage includes Dubins, CC-Dubins variants, RS, CC00-RS, HC00-RS, and HC0pm-RS. The HC-RS aggregate, HCpm0-RS, and HCpmpm-RS variants are not implemented in the Rust port yet.
+
 ## Layout
 
 - `include/steering_state/state.h`: shared public `State` type used by both libraries

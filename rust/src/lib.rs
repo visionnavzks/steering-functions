@@ -11,6 +11,7 @@ pub mod cc_dubins;
 pub mod cc_reeds_shepp;
 pub mod hc_reeds_shepp;
 pub mod steering_path;
+mod python_bindings;
 
 pub use state::{State, Control};
 pub use utilities::*;

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "steering-functions-rust"
+version = "0.1.0"
+description = "Python bindings for the Rust steering-functions port"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+viz = ["matplotlib"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "steering_functions_rust._core"
+features = ["python"]
