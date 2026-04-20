@@ -265,16 +265,13 @@ class DubinsStateSpace(BaseStateSpace):
         ]
 
     # ------------------------------------------------------------------
-    # Path (override – picks shorter of forward / reverse)
+    # Path
     # ------------------------------------------------------------------
     def get_path(self, state1: State, state2: State, controls_out=None) -> List[State]:
         """
-        Return shortest path, automatically selecting forward or reverse.
+        Return the path consistent with this state's driving direction mode.
         """
-        forward_length = self.get_distance(state1, state2)
-        reverse_length = self._kappa_inv * self.dubins(state2, state1).length()
-
-        if forward_length <= reverse_length:
+        if self._forwards:
             controls = self._get_controls_core(state1, state2, False)
         else:
             controls = self._get_controls_core(state1, state2, True)

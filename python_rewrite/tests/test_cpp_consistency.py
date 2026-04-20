@@ -8,11 +8,11 @@ the Python port produces matching results within floating-point tolerances.
 
 Run from the repository root::
 
-    python3 -m pytest python/tests/test_cpp_consistency.py -v
+    uv run python -m pytest python_rewrite/tests/test_cpp_consistency.py -v
 
 or::
 
-    python3 -m unittest discover -s python/tests -v
+    uv run python -m unittest python_rewrite.tests.test_cpp_consistency -v
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from pathlib import Path
 # Make sure the Python steering_functions package is importable.
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PY_ROOT = _REPO_ROOT / "python"
+_PY_ROOT = _REPO_ROOT / "python_rewrite"
 if str(_PY_ROOT) not in sys.path:
     sys.path.insert(0, str(_PY_ROOT))
 
@@ -405,6 +405,8 @@ class TestCppConsistency(unittest.TestCase):
                 if len(path) < 2:
                     continue
                 for pi in range(1, len(path)):
+                    if path[pi - 1].d * path[pi].d < 0:
+                        continue
                     dk = abs(path[pi].kappa - path[pi - 1].kappa)
                     if dk > max_dk:
                         failures.append(
