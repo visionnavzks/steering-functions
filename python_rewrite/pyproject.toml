@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "steering-functions"
@@ -9,6 +9,10 @@ description = "Steering functions for car-like robots (Python port)"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.8"
+dependencies = [
+	"matplotlib",
+	"numpy",
+]
 
 [project.optional-dependencies]
 dev = ["pytest"]
