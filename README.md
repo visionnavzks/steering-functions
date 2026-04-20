@@ -115,7 +115,14 @@ cd rust
 uv run --with matplotlib python -m steering_functions_rust.visualize
 ```
 
-Current Rust binding coverage includes Dubins, CC-Dubins variants, RS, CC00-RS, HC00-RS, and HC0pm-RS. The HC-RS aggregate, HCpm0-RS, and HCpmpm-RS variants are not implemented in the Rust port yet.
+Launch the native Rust egui visualizer:
+
+```bash
+cd rust
+cargo run --bin visualizer
+```
+
+Current Rust binding coverage includes Dubins, CC-Dubins variants, RS, CC00-RS, HC-RS, HC00-RS, HC0pm-RS, HCpm0-RS, and HCpmpm-RS.
 
 ## Layout
 

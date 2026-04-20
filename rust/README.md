@@ -10,6 +10,12 @@ Compile the crate:
 cargo check
 ```
 
+Run the native egui visualizer:
+
+```bash
+cargo run --bin visualizer
+```
+
 ## Python Bindings
 
 From the `rust/` directory, install the extension into the active environment:
@@ -50,7 +56,8 @@ The current Rust port exposes these planners end-to-end:
 - `CCPMPM_DUBINS`
 - `RS`
 - `CC00_RS`
+- `HC_RS`
 - `HC00_RS`
 - `HC0PM_RS`
-
-The `HC_RS`, `HCPM0_RS`, and `HCPMPM_RS` enum variants are present for API compatibility but are not implemented in the Rust port yet.
+- `HCPM0_RS`
+- `HCPMPM_RS`

@@ -6,7 +6,10 @@ use crate::cc_dubins::{
 };
 use crate::cc_reeds_shepp::CcReedsSheppStateSpace;
 use crate::dubins::DubinsStateSpace;
-use crate::hc_reeds_shepp::{Hc00RsStateSpace, Hc0pmRsStateSpace};
+use crate::hc_reeds_shepp::{
+    Hc00RsStateSpace, Hc0pmRsStateSpace, HcRsStateSpace, Hcpm0RsStateSpace,
+    HcpmpmRsStateSpace,
+};
 use crate::reeds_shepp::ReedsSheppStateSpace;
 use crate::state::{Control, State};
 
@@ -38,8 +41,11 @@ enum Planner {
     CcpmpmDubins(CCpmpmDubinsStateSpace),
     Dubins(DubinsStateSpace),
     Cc00Rs(CcReedsSheppStateSpace),
+    HcRs(HcRsStateSpace),
     Hc00Rs(Hc00RsStateSpace),
     Hc0pmRs(Hc0pmRsStateSpace),
+    Hcpm0Rs(Hcpm0RsStateSpace),
+    HcpmpmRs(HcpmpmRsStateSpace),
     Rs(ReedsSheppStateSpace),
 }
 
@@ -53,8 +59,11 @@ impl Planner {
             Self::CcpmpmDubins(planner) => planner.get_controls(start, goal),
             Self::Dubins(planner) => planner.get_controls(start, goal),
             Self::Cc00Rs(planner) => planner.get_controls(start, goal),
+            Self::HcRs(planner) => planner.get_controls(start, goal),
             Self::Hc00Rs(planner) => planner.get_controls(start, goal),
             Self::Hc0pmRs(planner) => planner.get_controls(start, goal),
+            Self::Hcpm0Rs(planner) => planner.get_controls(start, goal),
+            Self::HcpmpmRs(planner) => planner.get_controls(start, goal),
             Self::Rs(planner) => planner.get_controls(start, goal),
         }
     }
@@ -68,8 +77,11 @@ impl Planner {
             Self::CcpmpmDubins(planner) => planner.get_path(start, goal),
             Self::Dubins(planner) => planner.get_path(start, goal),
             Self::Cc00Rs(planner) => planner.get_path(start, goal),
+            Self::HcRs(planner) => planner.get_path(start, goal),
             Self::Hc00Rs(planner) => planner.get_path(start, goal),
             Self::Hc0pmRs(planner) => planner.get_path(start, goal),
+            Self::Hcpm0Rs(planner) => planner.get_path(start, goal),
+            Self::HcpmpmRs(planner) => planner.get_path(start, goal),
             Self::Rs(planner) => planner.get_path(start, goal),
         }
     }
@@ -83,8 +95,11 @@ impl Planner {
             Self::CcpmpmDubins(planner) => planner.get_all_controls(start, goal),
             Self::Dubins(planner) => planner.get_all_controls(start, goal),
             Self::Cc00Rs(planner) => planner.get_all_controls(start, goal),
+            Self::HcRs(planner) => planner.get_all_controls(start, goal),
             Self::Hc00Rs(planner) => planner.get_all_controls(start, goal),
             Self::Hc0pmRs(planner) => planner.get_all_controls(start, goal),
+            Self::Hcpm0Rs(planner) => planner.get_all_controls(start, goal),
+            Self::HcpmpmRs(planner) => planner.get_all_controls(start, goal),
             Self::Rs(planner) => planner.get_all_controls(start, goal),
         }
     }
@@ -98,8 +113,11 @@ impl Planner {
             Self::CcpmpmDubins(planner) => planner.get_all_paths(start, goal),
             Self::Dubins(planner) => planner.get_all_paths(start, goal),
             Self::Cc00Rs(planner) => planner.get_all_paths(start, goal),
+            Self::HcRs(planner) => planner.get_all_paths(start, goal),
             Self::Hc00Rs(planner) => planner.get_all_paths(start, goal),
             Self::Hc0pmRs(planner) => planner.get_all_paths(start, goal),
+            Self::Hcpm0Rs(planner) => planner.get_all_paths(start, goal),
+            Self::HcpmpmRs(planner) => planner.get_all_paths(start, goal),
             Self::Rs(planner) => planner.get_all_paths(start, goal),
         }
     }
@@ -140,8 +158,11 @@ impl SteeringPath {
             PathType::CcpmpmDubins,
             PathType::Dubins,
             PathType::Cc00Rs,
+            PathType::HcRs,
             PathType::Hc00Rs,
             PathType::Hc0pmRs,
+            PathType::Hcpm0Rs,
+            PathType::HcpmpmRs,
             PathType::Rs,
         ]
     }
@@ -163,13 +184,13 @@ impl SteeringPath {
             PathType::CcpmpmDubins => Ok(Planner::CcpmpmDubins(CCpmpmDubinsStateSpace::new(kappa, sigma, disc, true))),
             PathType::Dubins => Ok(Planner::Dubins(DubinsStateSpace::new(kappa, disc, true))),
             PathType::Cc00Rs => Ok(Planner::Cc00Rs(CcReedsSheppStateSpace::new(kappa, sigma, disc))),
+            PathType::HcRs => Ok(Planner::HcRs(HcRsStateSpace::new(kappa, sigma, disc))),
             PathType::Hc00Rs => Ok(Planner::Hc00Rs(Hc00RsStateSpace::new(kappa, sigma, disc))),
             PathType::Hc0pmRs => Ok(Planner::Hc0pmRs(Hc0pmRsStateSpace::new(kappa, sigma, disc))),
+            PathType::Hcpm0Rs => Ok(Planner::Hcpm0Rs(Hcpm0RsStateSpace::new(kappa, sigma, disc))),
+            PathType::HcpmpmRs => Ok(Planner::HcpmpmRs(HcpmpmRsStateSpace::new(kappa, sigma, disc))),
             PathType::Rs => Ok(Planner::Rs(ReedsSheppStateSpace::new(kappa, disc))),
             PathType::None => Err("PathType::None is not a runnable planner".to_string()),
-            PathType::HcRs | PathType::Hcpm0Rs | PathType::HcpmpmRs => {
-                Err(format!("{:?} is not implemented in the Rust port yet", self.path_type))
-            }
         }
     }
 

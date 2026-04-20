@@ -18,8 +18,11 @@ METHODS = {
     "CCpmpm-Dubins": (PathType.CCPMPM_DUBINS, True),
     "RS": (PathType.RS, False),
     "CC00-RS": (PathType.CC00_RS, True),
+    "HC-RS": (PathType.HC_RS, True),
     "HC00-RS": (PathType.HC00_RS, True),
     "HC0pm-RS": (PathType.HC0PM_RS, True),
+    "HCpm0-RS": (PathType.HCPM0_RS, True),
+    "HCpmpm-RS": (PathType.HCPMPM_RS, True),
 }
 
 SUPPORTED = list(supported_path_types())
