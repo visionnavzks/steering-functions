@@ -1687,6 +1687,7 @@ impl CCDubinsStateSpace {
         state_equal(&c1, &c2)
     }
 
+    #[allow(dead_code)]
     fn get_distance_inner(&self, state1: &State, state2: &State) -> f64 {
         let start_scs = self.predict_state(state1,  self.forward);
         let end_scs   = self.predict_state(state2, !self.forward);

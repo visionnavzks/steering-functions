@@ -74,6 +74,7 @@ struct Cc00RsHelper<'a> {
     angle:    f64,
 }
 
+#[allow(non_snake_case)]
 impl<'a> Cc00RsHelper<'a> {
     fn new(param: &'a HcCcCircleParam) -> Self {
         Self { param, distance: 0.0, angle: 0.0 }

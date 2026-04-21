@@ -1,5 +1,5 @@
 use std::f64::consts::PI;
-use crate::utilities::{get_epsilon, global_frame_change, HALF_PI, sgn, end_of_clothoid, point_distance};
+use crate::utilities::{get_epsilon, global_frame_change, HALF_PI, sgn, end_of_clothoid};
 use crate::configuration::{Configuration, configuration_distance, configuration_equal, configuration_aligned};
 use crate::hc_cc_circle::{HcCcCircle, HcCcCircleParam, center_distance, configuration_on_hc_cc_circle};
 use crate::paths::{
@@ -77,6 +77,7 @@ struct Hc00RsHelper<'a> {
     angle:    f64,
 }
 
+#[allow(non_snake_case)]
 impl<'a> Hc00RsHelper<'a> {
     fn new(param: &'a HcCcCircleParam, rs_param: &'a HcCcCircleParam) -> Self {
         Self { param, rs_param, distance: 0.0, angle: 0.0 }
@@ -1409,6 +1410,7 @@ struct Hc0pmRsHelper<'a> {
     base: Hc00RsHelper<'a>,
 }
 
+#[allow(non_snake_case)]
 impl<'a> Hc0pmRsHelper<'a> {
     fn new(param: &'a HcCcCircleParam, rs_param: &'a HcCcCircleParam) -> Self {
         Self { base: Hc00RsHelper::new(param, rs_param) }
@@ -2161,8 +2163,6 @@ fn hc0pm_circles_rs_path(
 pub struct Hc0pmRsStateSpace {
     params_: HcCcStateSpaceParams,
     rs_circle_param_: HcCcCircleParam,
-    radius_: f64,
-    mu_: f64,
     discretization_: f64,
 }
 
@@ -2171,13 +2171,9 @@ impl Hc0pmRsStateSpace {
         let params = HcCcStateSpaceParams::new(kappa, sigma);
         let mut rs_param = HcCcCircleParam::default();
         rs_param.set_param(kappa, f64::MAX, 1.0 / kappa, 0.0, 0.0, 1.0, 0.0);
-        let radius = params.hc_cc_circle_param_.radius;
-        let mu = params.hc_cc_circle_param_.mu;
         Self {
             params_: params,
             rs_circle_param_: rs_param,
-            radius_: radius,
-            mu_: mu,
             discretization_: discretization,
         }
     }
@@ -2465,6 +2461,7 @@ struct HcpmpmRsHelper<'a> {
     cos_mu_: f64,
 }
 
+#[allow(non_snake_case)]
 impl<'a> HcpmpmRsHelper<'a> {
     fn new(param: &'a HcCcCircleParam, rs_param: &'a HcCcCircleParam) -> Self {
         Self {
