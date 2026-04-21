@@ -20,7 +20,6 @@ struct VisualizerApp {
     discretization: f64,
     start: State,
     goal: State,
-    set_target: Target,
     drag_target: Option<Target>,
     fit_once: bool,
 }
@@ -53,7 +52,6 @@ impl Default for VisualizerApp {
                 kappa: 0.0,
                 ..State::default()
             },
-            set_target: Target::Start,
             drag_target: None,
             fit_once: true,
         }
@@ -131,13 +129,6 @@ impl VisualizerApp {
         }
     }
 
-    fn toggle_target(&mut self) {
-        self.set_target = match self.set_target {
-            Target::Start => Target::Goal,
-            Target::Goal => Target::Start,
-        };
-    }
-
     fn edit_state(ui: &mut egui::Ui, label: &str, state: &mut State, kappa_max: f64) {
         ui.label(RichText::new(label).strong());
         ui.horizontal(|ui| {
@@ -209,16 +200,6 @@ impl eframe::App for VisualizerApp {
         let mut follow_goal_with_mouse = false;
 
         ctx.input(|input| {
-            if input.key_pressed(egui::Key::S) {
-                self.set_target = Target::Start;
-            }
-            if input.key_pressed(egui::Key::G) {
-                self.set_target = Target::Goal;
-            }
-            if input.key_pressed(egui::Key::Tab) {
-                self.toggle_target();
-            }
-
             follow_start_with_mouse = input.key_down(egui::Key::S);
             follow_goal_with_mouse = input.key_down(egui::Key::G);
         });
@@ -256,15 +237,7 @@ impl eframe::App for VisualizerApp {
                 ui.separator();
                 Self::edit_state(ui, "Goal", &mut self.goal, self.kappa_max);
                 ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.set_target, Target::Start, "Click sets Start");
-                    ui.selectable_value(&mut self.set_target, Target::Goal, "Click sets Goal");
-                });
-                ui.label(match self.set_target {
-                    Target::Start => "Hotkeys: hold S to move Start with the mouse, hold G for Goal, Tab toggles click target. Current target: Start",
-                    Target::Goal => "Hotkeys: hold S to move Start with the mouse, hold G for Goal, Tab toggles click target. Current target: Goal",
-                });
+                ui.label("Hotkeys: hold S to move Start with the mouse, hold G to move Goal.");
 
                 if ui.button("Reset").clicked() {
                     self.reset();
@@ -317,10 +290,21 @@ impl eframe::App for VisualizerApp {
             Plot::new("steering_plot")
                 .legend(Legend::default())
                 .data_aspect(1.0)
+                .allow_scroll(false)
+                .allow_zoom(false)
                 .show(ui, |plot_ui| {
                     if self.fit_once {
                         plot_ui.set_plot_bounds(PlotBounds::from_min_max([-6.0, -6.0], [6.0, 6.0]));
                         self.fit_once = false;
+                    }
+
+                    if plot_ui.response().hovered() {
+                        let scroll_delta_y = ctx.input(|input| input.smooth_scroll_delta.y);
+                        if scroll_delta_y.abs() > f32::EPSILON {
+                            let zoom_factor = (scroll_delta_y / 200.0).exp();
+                            plot_ui.set_auto_bounds(false.into());
+                            plot_ui.zoom_bounds_around_hovered(egui::Vec2::splat(zoom_factor));
+                        }
                     }
 
                     let pointer_down = ctx.input(|input| input.pointer.primary_down());
@@ -351,14 +335,6 @@ impl eframe::App for VisualizerApp {
                         }
                     } else {
                         self.drag_target = None;
-                    }
-
-                    if plot_ui.response().clicked() {
-                        if let Some(position) = plot_ui.pointer_coordinate() {
-                            let target = self.target_state_mut(self.set_target);
-                            target.x = position.x;
-                            target.y = position.y;
-                        }
                     }
 
                     match &planning_data {
@@ -415,7 +391,7 @@ impl eframe::App for VisualizerApp {
 
             ui.separator();
             ui.label(summary);
-            ui.label("Hold S or G to let Start/Goal follow the mouse, or click to place the selected target.");
+            ui.label("Hold S or G to let Start/Goal follow the mouse, or drag the green/red markers directly.");
         });
     }
 }
