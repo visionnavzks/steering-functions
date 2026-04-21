@@ -20,14 +20,7 @@ struct VisualizerApp {
     discretization: f64,
     start: State,
     goal: State,
-    drag_target: Option<Target>,
     fit_once: bool,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Target {
-    Start,
-    Goal,
 }
 
 impl Default for VisualizerApp {
@@ -52,7 +45,6 @@ impl Default for VisualizerApp {
                 kappa: 0.0,
                 ..State::default()
             },
-            drag_target: None,
             fit_once: true,
         }
     }
@@ -100,33 +92,6 @@ impl VisualizerApp {
 
     fn path_plot_points(path: &[State]) -> PlotPoints {
         PlotPoints::from_iter(path.iter().map(|state| [state.x, state.y]))
-    }
-
-    fn position_distance_squared(state: &State, x: f64, y: f64) -> f64 {
-        let dx = state.x - x;
-        let dy = state.y - y;
-        dx * dx + dy * dy
-    }
-
-    fn pick_drag_target(&self, x: f64, y: f64) -> Option<Target> {
-        let drag_radius_squared = 0.35_f64.powi(2);
-        let start_distance = Self::position_distance_squared(&self.start, x, y);
-        let goal_distance = Self::position_distance_squared(&self.goal, x, y);
-
-        if start_distance <= drag_radius_squared && start_distance <= goal_distance {
-            Some(Target::Start)
-        } else if goal_distance <= drag_radius_squared {
-            Some(Target::Goal)
-        } else {
-            None
-        }
-    }
-
-    fn target_state_mut(&mut self, target: Target) -> &mut State {
-        match target {
-            Target::Start => &mut self.start,
-            Target::Goal => &mut self.goal,
-        }
     }
 
     fn edit_state(ui: &mut egui::Ui, label: &str, state: &mut State, kappa_max: f64) {
@@ -307,7 +272,6 @@ impl eframe::App for VisualizerApp {
                         }
                     }
 
-                    let pointer_down = ctx.input(|input| input.pointer.primary_down());
                     let pointer_position = plot_ui.pointer_coordinate();
 
                     if let Some(position) = pointer_position {
@@ -319,22 +283,6 @@ impl eframe::App for VisualizerApp {
                             self.goal.x = position.x;
                             self.goal.y = position.y;
                         }
-                    }
-
-                    if pointer_down {
-                        if self.drag_target.is_none() {
-                            if let Some(position) = pointer_position {
-                                self.drag_target = self.pick_drag_target(position.x, position.y);
-                            }
-                        }
-
-                        if let (Some(drag_target), Some(position)) = (self.drag_target, pointer_position) {
-                            let target = self.target_state_mut(drag_target);
-                            target.x = position.x;
-                            target.y = position.y;
-                        }
-                    } else {
-                        self.drag_target = None;
                     }
 
                     match &planning_data {
@@ -391,7 +339,7 @@ impl eframe::App for VisualizerApp {
 
             ui.separator();
             ui.label(summary);
-            ui.label("Hold S or G to let Start/Goal follow the mouse, or drag the green/red markers directly.");
+            ui.label("Hold S or G to let Start/Goal follow the mouse.");
         });
     }
 }
