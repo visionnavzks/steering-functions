@@ -1,7 +1,16 @@
-use eframe::egui::{self, Color32, DragValue, RichText};
+use eframe::egui::{self, Color32, DragValue, RichText, ScrollArea};
 use egui_plot::{Legend, Line, Plot, PlotBounds, PlotPoints, Points};
 
-use steering_functions::{PathType, State, SteeringPath};
+use steering_functions::{Control, PathType, State, SteeringPath};
+
+#[derive(Default)]
+struct PlanningViewData {
+    summary: String,
+    shortest_path: Option<Vec<State>>,
+    shortest_controls: Vec<Control>,
+    all_paths: Vec<Vec<State>>,
+    all_controls: Vec<Vec<Control>>,
+}
 
 struct VisualizerApp {
     path_type: PathType,
@@ -12,6 +21,7 @@ struct VisualizerApp {
     start: State,
     goal: State,
     set_target: Target,
+    drag_target: Option<Target>,
     fit_once: bool,
 }
 
@@ -44,6 +54,7 @@ impl Default for VisualizerApp {
                 ..State::default()
             },
             set_target: Target::Start,
+            drag_target: None,
             fit_once: true,
         }
     }
@@ -93,6 +104,40 @@ impl VisualizerApp {
         PlotPoints::from_iter(path.iter().map(|state| [state.x, state.y]))
     }
 
+    fn position_distance_squared(state: &State, x: f64, y: f64) -> f64 {
+        let dx = state.x - x;
+        let dy = state.y - y;
+        dx * dx + dy * dy
+    }
+
+    fn pick_drag_target(&self, x: f64, y: f64) -> Option<Target> {
+        let drag_radius_squared = 0.35_f64.powi(2);
+        let start_distance = Self::position_distance_squared(&self.start, x, y);
+        let goal_distance = Self::position_distance_squared(&self.goal, x, y);
+
+        if start_distance <= drag_radius_squared && start_distance <= goal_distance {
+            Some(Target::Start)
+        } else if goal_distance <= drag_radius_squared {
+            Some(Target::Goal)
+        } else {
+            None
+        }
+    }
+
+    fn target_state_mut(&mut self, target: Target) -> &mut State {
+        match target {
+            Target::Start => &mut self.start,
+            Target::Goal => &mut self.goal,
+        }
+    }
+
+    fn toggle_target(&mut self) {
+        self.set_target = match self.set_target {
+            Target::Start => Target::Goal,
+            Target::Goal => Target::Start,
+        };
+    }
+
     fn edit_state(ui: &mut egui::Ui, label: &str, state: &mut State, kappa_max: f64) {
         ui.label(RichText::new(label).strong());
         ui.horizontal(|ui| {
@@ -108,10 +153,78 @@ impl VisualizerApp {
             ui.add(DragValue::new(&mut state.kappa).speed(0.02).range(-kappa_max..=kappa_max));
         });
     }
+
+    fn format_control(control: &Control, index: usize) -> String {
+        format!(
+            "{:02}: ds={:+.3}, kappa={:+.3}, sigma={:+.3}",
+            index,
+            control.delta_s,
+            control.kappa,
+            control.sigma
+        )
+    }
+
+    fn compute_view_data(&self) -> Result<PlanningViewData, String> {
+        let planner = self.planner()?;
+
+        if self.show_all {
+            let all_paths = planner.compute_all_paths(&self.start, &self.goal)?;
+            let all_controls = planner.compute_all_control_sequences(&self.start, &self.goal)?;
+            let shortest_controls = planner.compute_shortest_control_sequence(&self.start, &self.goal)?;
+            let summary = format!(
+                "{} candidate paths, best length {:.3} m",
+                all_paths.len(),
+                shortest_controls.iter().map(|c| c.delta_s.abs()).sum::<f64>()
+            );
+
+            Ok(PlanningViewData {
+                summary,
+                shortest_controls,
+                all_paths,
+                all_controls,
+                ..PlanningViewData::default()
+            })
+        } else {
+            let shortest_path = planner.compute_shortest_path(&self.start, &self.goal)?;
+            let shortest_controls = planner.compute_shortest_control_sequence(&self.start, &self.goal)?;
+            let summary = format!(
+                "{} segments, length {:.3} m",
+                shortest_controls.len(),
+                shortest_controls.iter().map(|c| c.delta_s.abs()).sum::<f64>()
+            );
+
+            Ok(PlanningViewData {
+                summary,
+                shortest_path: Some(shortest_path),
+                shortest_controls,
+                ..PlanningViewData::default()
+            })
+        }
+    }
 }
 
 impl eframe::App for VisualizerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut follow_start_with_mouse = false;
+        let mut follow_goal_with_mouse = false;
+
+        ctx.input(|input| {
+            if input.key_pressed(egui::Key::S) {
+                self.set_target = Target::Start;
+            }
+            if input.key_pressed(egui::Key::G) {
+                self.set_target = Target::Goal;
+            }
+            if input.key_pressed(egui::Key::Tab) {
+                self.toggle_target();
+            }
+
+            follow_start_with_mouse = input.key_down(egui::Key::S);
+            follow_goal_with_mouse = input.key_down(egui::Key::G);
+        });
+
+        let planning_data = self.compute_view_data();
+
         egui::SidePanel::right("controls")
             .min_width(280.0)
             .show(ctx, |ui| {
@@ -148,14 +261,57 @@ impl eframe::App for VisualizerApp {
                     ui.selectable_value(&mut self.set_target, Target::Start, "Click sets Start");
                     ui.selectable_value(&mut self.set_target, Target::Goal, "Click sets Goal");
                 });
+                ui.label(match self.set_target {
+                    Target::Start => "Hotkeys: hold S to move Start with the mouse, hold G for Goal, Tab toggles click target. Current target: Start",
+                    Target::Goal => "Hotkeys: hold S to move Start with the mouse, hold G for Goal, Tab toggles click target. Current target: Goal",
+                });
 
                 if ui.button("Reset").clicked() {
                     self.reset();
                 }
+
+                ui.separator();
+                ui.label(RichText::new("Control Commands").strong());
+
+                match &planning_data {
+                    Ok(data) => {
+                        ScrollArea::vertical().max_height(260.0).show(ui, |ui| {
+                            if self.show_all {
+                                for (sequence_index, controls) in data.all_controls.iter().enumerate() {
+                                    let total_length: f64 = controls.iter().map(|c| c.delta_s.abs()).sum();
+                                    ui.label(
+                                        RichText::new(format!(
+                                            "Path {} ({:.3} m)",
+                                            sequence_index + 1,
+                                            total_length
+                                        ))
+                                        .strong(),
+                                    );
+                                    if controls.is_empty() {
+                                        ui.monospace("  <empty>");
+                                    } else {
+                                        for (control_index, control) in controls.iter().enumerate() {
+                                            ui.monospace(Self::format_control(control, control_index));
+                                        }
+                                    }
+                                    ui.add_space(6.0);
+                                }
+                            } else if data.shortest_controls.is_empty() {
+                                ui.monospace("<empty>");
+                            } else {
+                                for (control_index, control) in data.shortest_controls.iter().enumerate() {
+                                    ui.monospace(Self::format_control(control, control_index));
+                                }
+                            }
+                        });
+                    }
+                    Err(error) => {
+                        ui.colored_label(Color32::LIGHT_RED, error);
+                    }
+                }
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let planner = self.planner();
             let mut summary = String::new();
 
             Plot::new("steering_plot")
@@ -167,72 +323,70 @@ impl eframe::App for VisualizerApp {
                         self.fit_once = false;
                     }
 
+                    let pointer_down = ctx.input(|input| input.pointer.primary_down());
+                    let pointer_position = plot_ui.pointer_coordinate();
+
+                    if let Some(position) = pointer_position {
+                        if follow_start_with_mouse {
+                            self.start.x = position.x;
+                            self.start.y = position.y;
+                        }
+                        if follow_goal_with_mouse {
+                            self.goal.x = position.x;
+                            self.goal.y = position.y;
+                        }
+                    }
+
+                    if pointer_down {
+                        if self.drag_target.is_none() {
+                            if let Some(position) = pointer_position {
+                                self.drag_target = self.pick_drag_target(position.x, position.y);
+                            }
+                        }
+
+                        if let (Some(drag_target), Some(position)) = (self.drag_target, pointer_position) {
+                            let target = self.target_state_mut(drag_target);
+                            target.x = position.x;
+                            target.y = position.y;
+                        }
+                    } else {
+                        self.drag_target = None;
+                    }
+
                     if plot_ui.response().clicked() {
                         if let Some(position) = plot_ui.pointer_coordinate() {
-                            let target = match self.set_target {
-                                Target::Start => &mut self.start,
-                                Target::Goal => &mut self.goal,
-                            };
+                            let target = self.target_state_mut(self.set_target);
                             target.x = position.x;
                             target.y = position.y;
                         }
                     }
 
-                    match planner {
-                        Ok(ref planner) => {
+                    match &planning_data {
+                        Ok(data) => {
+                            summary = data.summary.clone();
                             if self.show_all {
-                                match planner.compute_all_paths(&self.start, &self.goal) {
-                                    Ok(paths) => {
-                                        for (index, path) in paths.iter().enumerate() {
-                                            let color = Color32::from_rgb(
-                                                (40 + (index * 45 % 180)) as u8,
-                                                (120 + (index * 35 % 100)) as u8,
-                                                (200 - (index * 25 % 120)) as u8,
-                                            );
-                                            plot_ui.line(
-                                                Line::new(Self::path_plot_points(path))
-                                                    .name(format!("path {}", index + 1))
-                                                    .color(color),
-                                            );
-                                        }
-                                        match planner.compute_shortest_control_sequence(&self.start, &self.goal) {
-                                            Ok(controls) => {
-                                                summary = format!(
-                                                    "{} candidate paths, best length {:.3} m",
-                                                    paths.len(),
-                                                    controls.iter().map(|c| c.delta_s.abs()).sum::<f64>()
-                                                );
-                                            }
-                                            Err(error) => summary = error,
-                                        }
-                                    }
-                                    Err(error) => summary = error,
+                                for (index, path) in data.all_paths.iter().enumerate() {
+                                    let color = Color32::from_rgb(
+                                        (40 + (index * 45 % 180)) as u8,
+                                        (120 + (index * 35 % 100)) as u8,
+                                        (200 - (index * 25 % 120)) as u8,
+                                    );
+                                    plot_ui.line(
+                                        Line::new(Self::path_plot_points(path))
+                                            .name(format!("path {}", index + 1))
+                                            .color(color),
+                                    );
                                 }
-                            } else {
-                                match planner.compute_shortest_path(&self.start, &self.goal) {
-                                    Ok(path) => {
-                                        plot_ui.line(
-                                            Line::new(Self::path_plot_points(&path))
-                                                .name("shortest path")
-                                                .color(Color32::LIGHT_BLUE)
-                                                .width(2.5),
-                                        );
-                                        match planner.compute_shortest_control_sequence(&self.start, &self.goal) {
-                                            Ok(controls) => {
-                                                summary = format!(
-                                                    "{} segments, length {:.3} m",
-                                                    controls.len(),
-                                                    controls.iter().map(|c| c.delta_s.abs()).sum::<f64>()
-                                                );
-                                            }
-                                            Err(error) => summary = error,
-                                        }
-                                    }
-                                    Err(error) => summary = error,
-                                }
+                            } else if let Some(path) = &data.shortest_path {
+                                plot_ui.line(
+                                    Line::new(Self::path_plot_points(path))
+                                        .name("shortest path")
+                                        .color(Color32::LIGHT_BLUE)
+                                        .width(2.5),
+                                );
                             }
                         }
-                        Err(error) => summary = error,
+                        Err(error) => summary = error.clone(),
                     }
 
                     plot_ui.points(
@@ -261,7 +415,7 @@ impl eframe::App for VisualizerApp {
 
             ui.separator();
             ui.label(summary);
-            ui.label("Click inside the plot to move the selected target point.");
+            ui.label("Hold S or G to let Start/Goal follow the mouse, or click to place the selected target.");
         });
     }
 }
