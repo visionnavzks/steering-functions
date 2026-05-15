@@ -14,3 +14,4 @@ __pycache__/
 # Rust build artifacts
 rust/target/
 uv.lock
+target/
