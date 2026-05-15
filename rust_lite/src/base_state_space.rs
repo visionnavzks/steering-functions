@@ -4,6 +4,44 @@ use crate::utilities::{
     end_of_clothoid, end_of_circular_arc, end_of_straight_line,
 };
 
+fn integrate_ode_step(state: &State, control: &Control, integration_step: f64) -> State {
+    let mut next = State::default();
+    let kappa = control.kappa;
+    let sigma = control.sigma;
+    let d = sgn(control.delta_s);
+
+    if sigma.abs() > get_epsilon() {
+        let (xf, yf, tf, kf) = end_of_clothoid(
+            state.x, state.y, state.theta, state.kappa,
+            sigma, d, integration_step,
+        );
+        next.x = xf;
+        next.y = yf;
+        next.theta = tf;
+        next.kappa = kf;
+        next.sigma = sigma;
+    } else if kappa.abs() > get_epsilon() {
+        let (xf, yf, tf) = end_of_circular_arc(
+            state.x, state.y, state.theta,
+            kappa, d, integration_step,
+        );
+        next.x = xf;
+        next.y = yf;
+        next.theta = tf;
+        next.kappa = kappa;
+    } else {
+        let (xf, yf) = end_of_straight_line(
+            state.x, state.y, state.theta,
+            d, integration_step,
+        );
+        next.x = xf;
+        next.y = yf;
+        next.theta = state.theta;
+    }
+
+    next
+}
+
 /// Trait implemented by all steering state spaces.
 pub trait StateSpace {
     /// Return the control sequence for the shortest path from `s1` to `s2`.
@@ -14,45 +52,6 @@ pub trait StateSpace {
 
     /// Discretisation step length.
     fn discretization(&self) -> f64;
-
-    /// Integrate a single ODE step.
-    fn integrate_ode(state: &State, control: &Control, integration_step: f64) -> State {
-        let mut next = State::default();
-        let kappa = control.kappa;
-        let sigma = control.sigma;
-        let d = sgn(control.delta_s);
-
-        if sigma.abs() > get_epsilon() {
-            let (xf, yf, tf, kf) = end_of_clothoid(
-                state.x, state.y, state.theta, state.kappa,
-                sigma, d, integration_step,
-            );
-            next.x = xf;
-            next.y = yf;
-            next.theta = tf;
-            next.kappa = kf;
-            next.sigma = sigma;
-        } else if kappa.abs() > get_epsilon() {
-            let (xf, yf, tf) = end_of_circular_arc(
-                state.x, state.y, state.theta,
-                kappa, d, integration_step,
-            );
-            next.x = xf;
-            next.y = yf;
-            next.theta = tf;
-            next.kappa = kappa;
-        } else {
-            let (xf, yf) = end_of_straight_line(
-                state.x, state.y, state.theta,
-                d, integration_step,
-            );
-            next.x = xf;
-            next.y = yf;
-            next.theta = state.theta;
-        }
-
-        next
-    }
 
     /// Compute the discretised path from `state1` to `state2`.
     fn get_path(&self, state1: &State, state2: &State) -> Vec<State> {
@@ -94,7 +93,7 @@ pub trait StateSpace {
                 } else {
                     step
                 };
-                let next = Self::integrate_ode(&curr, control, integration_step);
+                let next = integrate_ode_step(&curr, control, integration_step);
                 path.push(next);
                 curr = next;
             }
@@ -118,10 +117,10 @@ pub trait StateSpace {
         for control in controls {
             let abs_ds = control.delta_s.abs();
             if s_inter - s_accum > abs_ds {
-                curr = Self::integrate_ode(&curr, control, abs_ds);
+                curr = integrate_ode_step(&curr, control, abs_ds);
                 s_accum += abs_ds;
             } else {
-                result = Self::integrate_ode(&curr, control, s_inter - s_accum);
+                result = integrate_ode_step(&curr, control, s_inter - s_accum);
                 return result;
             }
         }

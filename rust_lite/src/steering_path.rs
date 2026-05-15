@@ -10,56 +10,24 @@ pub enum PathType {
     Rs,
 }
 
-enum Planner {
-    Dubins(DubinsStateSpace),
-    Rs(ReedsSheppStateSpace),
-}
-
-impl Planner {
-    fn get_controls(&self, start: &State, goal: &State) -> Vec<Control> {
-        match self {
-            Self::Dubins(planner) => planner.get_controls(start, goal),
-            Self::Rs(planner) => planner.get_controls(start, goal),
-        }
-    }
-
-    fn get_path(&self, start: &State, goal: &State) -> Vec<State> {
-        match self {
-            Self::Dubins(planner) => planner.get_path(start, goal),
-            Self::Rs(planner) => planner.get_path(start, goal),
-        }
-    }
-
-    fn get_all_controls(&self, start: &State, goal: &State) -> Vec<Vec<Control>> {
-        match self {
-            Self::Dubins(planner) => planner.get_all_controls(start, goal),
-            Self::Rs(planner) => planner.get_all_controls(start, goal),
-        }
-    }
-
-    fn get_all_paths(&self, start: &State, goal: &State) -> Vec<Vec<State>> {
-        match self {
-            Self::Dubins(planner) => planner.get_all_paths(start, goal),
-            Self::Rs(planner) => planner.get_all_paths(start, goal),
-        }
-    }
-}
-
 pub struct SteeringPath {
-    pub path_type: PathType,
-    pub kappa_max: f64,
-    pub discretization: f64,
-    pub dubins_direction_mode: DubinsDirectionMode,
+    path_type: PathType,
+    kappa_max: f64,
+    discretization: f64,
+    dubins_direction_mode: DubinsDirectionMode,
+    planner: Box<dyn StateSpace>,
 }
 
 impl SteeringPath {
     pub fn new(path_type: PathType, kappa_max: f64, discretization: f64) -> Self {
         assert!(kappa_max > 0.0 && discretization > 0.0);
+        let dubins_direction_mode = DubinsDirectionMode::ForwardOnly;
         Self {
             path_type,
             kappa_max,
             discretization,
-            dubins_direction_mode: DubinsDirectionMode::ForwardOnly,
+            dubins_direction_mode,
+            planner: Self::build_planner(path_type, kappa_max, discretization, dubins_direction_mode),
         }
     }
 
@@ -68,32 +36,89 @@ impl SteeringPath {
             return Err("invalid SteeringPath parameters".to_string());
         }
 
-        Ok(Self {
-            path_type,
-            kappa_max,
-            discretization,
-            dubins_direction_mode: DubinsDirectionMode::ForwardOnly,
-        })
+        Ok(Self::new(path_type, kappa_max, discretization))
     }
 
     pub fn with_dubins_direction_mode(mut self, direction_mode: DubinsDirectionMode) -> Self {
-        self.dubins_direction_mode = direction_mode;
+        self.set_dubins_direction_mode(direction_mode);
         self
+    }
+
+    pub fn path_type(&self) -> PathType {
+        self.path_type
+    }
+
+    pub fn kappa_max(&self) -> f64 {
+        self.kappa_max
+    }
+
+    pub fn discretization(&self) -> f64 {
+        self.discretization
+    }
+
+    pub fn dubins_direction_mode(&self) -> DubinsDirectionMode {
+        self.dubins_direction_mode
+    }
+
+    pub fn set_path_type(&mut self, path_type: PathType) {
+        self.path_type = path_type;
+        self.rebuild_planner();
+    }
+
+    pub fn set_kappa_max(&mut self, kappa_max: f64) -> Result<(), String> {
+        if kappa_max <= 0.0 {
+            return Err("invalid kappa_max".to_string());
+        }
+        self.kappa_max = kappa_max;
+        self.rebuild_planner();
+        Ok(())
+    }
+
+    pub fn set_discretization(&mut self, discretization: f64) -> Result<(), String> {
+        if discretization <= 0.0 {
+            return Err("invalid discretization".to_string());
+        }
+        self.discretization = discretization;
+        self.rebuild_planner();
+        Ok(())
+    }
+
+    pub fn set_dubins_direction_mode(&mut self, direction_mode: DubinsDirectionMode) {
+        self.dubins_direction_mode = direction_mode;
+        self.rebuild_planner();
     }
 
     pub fn supported_path_types() -> Vec<PathType> {
         vec![PathType::Dubins, PathType::Rs]
     }
 
-    fn planner(&self) -> Planner {
-        match self.path_type {
-            PathType::Dubins => Planner::Dubins(DubinsStateSpace::new(
-                self.kappa_max,
-                self.discretization,
-                self.dubins_direction_mode,
+    fn build_planner(
+        path_type: PathType,
+        kappa_max: f64,
+        discretization: f64,
+        dubins_direction_mode: DubinsDirectionMode,
+    ) -> Box<dyn StateSpace> {
+        match path_type {
+            PathType::Dubins => Box::new(DubinsStateSpace::new(
+                kappa_max,
+                discretization,
+                dubins_direction_mode,
             )),
-            PathType::Rs => Planner::Rs(ReedsSheppStateSpace::new(self.kappa_max, self.discretization)),
+            PathType::Rs => Box::new(ReedsSheppStateSpace::new(kappa_max, discretization)),
         }
+    }
+
+    fn rebuild_planner(&mut self) {
+        self.planner = Self::build_planner(
+            self.path_type,
+            self.kappa_max,
+            self.discretization,
+            self.dubins_direction_mode,
+        );
+    }
+
+    fn planner(&self) -> &dyn StateSpace {
+        self.planner.as_ref()
     }
 
     pub fn compute_shortest_control_sequence(&self, start: &State, goal: &State) -> Vec<Control> {
