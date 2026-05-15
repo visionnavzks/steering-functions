@@ -187,15 +187,17 @@ fn shortest_dubins_path(
 
 fn controls_from_dubins(path: &DubinsPath, rho: f64, forward: bool) -> Vec<Control> {
     let d = if forward { 1.0 } else { -1.0 };
+    let kappa_dir = if forward { 1.0 } else { -1.0 };
     let mut controls = Vec::new();
     for (&seg_type, &seg_length) in path.type_.iter().zip(path.length_.iter()) {
         let length = seg_length * rho;
         if length.abs() < DUBINS_EPS { continue; }
-        let (kappa, sigma) = match seg_type {
+        let (base_kappa, sigma) = match seg_type {
             t if t == DUBINS_LEFT     => (1.0 / rho,  0.0),
-            t if t == DUBINS_STRAIGHT => (0.0,         0.0),
+            t if t == DUBINS_STRAIGHT => (0.0,        0.0),
             _                         => (-1.0 / rho, 0.0),
         };
+        let kappa = kappa_dir * base_kappa;
         controls.push(Control { delta_s: d * length, kappa, sigma });
     }
     controls
@@ -274,4 +276,38 @@ impl StateSpace for DubinsStateSpace {
     }
 
     fn discretization(&self) -> f64 { self.discretization_ }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DubinsDirectionMode, DubinsStateSpace};
+    use crate::base_state_space::StateSpace;
+    use crate::state::State;
+    use crate::utilities::pify;
+
+    #[test]
+    fn reverse_only_reaches_goal_pose() {
+        let planner = DubinsStateSpace::new(1.0, 0.05, DubinsDirectionMode::ReverseOnly);
+        let start = State {
+            x: -3.0,
+            y: 0.0,
+            theta: 0.0,
+            ..State::default()
+        };
+        let goal = State {
+            x: 3.0,
+            y: 2.0,
+            theta: std::f64::consts::FRAC_PI_4,
+            ..State::default()
+        };
+
+        let path = planner.get_path(&start, &goal);
+        let end = path.last().copied().expect("path should contain samples");
+
+        let pos_eps = 1e-4;
+        let heading_eps = 1e-4;
+        assert!((end.x - goal.x).abs() < pos_eps, "x mismatch: {} vs {}", end.x, goal.x);
+        assert!((end.y - goal.y).abs() < pos_eps, "y mismatch: {} vs {}", end.y, goal.y);
+        assert!(pify(end.theta - goal.theta).abs() < heading_eps, "theta mismatch: {} vs {}", end.theta, goal.theta);
+    }
 }

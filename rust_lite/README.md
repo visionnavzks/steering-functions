@@ -11,6 +11,20 @@ A minimal Rust extraction of steering functions that only includes:
 cargo check
 ```
 
+## GUI Example
+
+Run the interactive planner visualizer:
+
+```bash
+cargo run --example gui
+```
+
+The GUI supports:
+
+- Dubins and Reeds-Shepp
+- Dubins direction mode: forward only, reverse only, forward or reverse
+- shortest path and all candidate paths display
+
 ## Usage
 
 ```rust

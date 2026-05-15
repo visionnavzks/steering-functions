@@ -11,3 +11,7 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
+
+[dev-dependencies]
+eframe = { version = "0.29", features = ["default"] }
+egui_plot = "0.29"
