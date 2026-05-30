@@ -1,14 +1,20 @@
-# steering-functions-lite
+# steering-functions-dubins-rs
 
-A minimal Rust extraction of steering functions that only includes:
+A minimal Rust crate for steering functions including:
 
-- Dubins
-- Reeds-Shepp
+- **Dubins** curves (forward-only, reverse-only, or bidirectional)
+- **Reeds-Shepp** curves (bidirectional)
 
 ## Build
 
 ```bash
 cargo check
+```
+
+## Test
+
+```bash
+cargo test
 ```
 
 ## GUI Example
@@ -21,14 +27,15 @@ cargo run --example gui
 
 The GUI supports:
 
-- Dubins and Reeds-Shepp
+- Dubins and Reeds-Shepp path types
 - Dubins direction mode: forward only, reverse only, forward or reverse
-- shortest path and all candidate paths display
+- Shortest path and all candidate paths display
+- Control commands with segment type labels
 
 ## Usage
 
 ```rust
-use steering_functions_lite::{PathType, State, SteeringPath};
+use steering_functions_dubins_rs::{PathType, State, SteeringPath};
 
 let planner = SteeringPath::new(PathType::Dubins, 1.0, 0.05);
 let start = State {
@@ -47,3 +54,7 @@ let goal = State {
 let path = planner.compute_shortest_path(&start, &goal);
 println!("path samples: {}", path.len());
 ```
+
+## License
+
+Apache-2.0

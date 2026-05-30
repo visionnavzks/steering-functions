@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "Minimal steering functions crate with Dubins and Reeds-Shepp"
 license = "Apache-2.0"
+repository = "https://github.com/visionnavzks/rust-dubins-rs"
+keywords = ["steering", "dubins", "reeds-shepp", "path-planning", "robotics"]
+categories = ["algorithms", "simulation"]
 
 [lib]
 name = "steering_functions_dubins_rs"
