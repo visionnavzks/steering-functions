@@ -1,12 +1,12 @@
 [package]
-name = "steering-functions-lite"
+name = "steering-functions-dubins-rs"
 version = "0.1.0"
 edition = "2021"
 description = "Minimal steering functions crate with Dubins and Reeds-Shepp"
 license = "Apache-2.0"
 
 [lib]
-name = "steering_functions_lite"
+name = "steering_functions_dubins_rs"
 path = "src/lib.rs"
 crate-type = ["rlib"]
 

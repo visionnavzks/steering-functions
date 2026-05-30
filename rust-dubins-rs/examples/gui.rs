@@ -1,7 +1,7 @@
 use eframe::egui::{self, Color32, DragValue, RichText, ScrollArea};
 use egui_plot::{Legend, Line, Plot, PlotBounds, PlotPoints, Points};
 
-use steering_functions_lite::{
+use steering_functions_dubins_rs::{
     Control, DubinsDirectionMode, PathType, State, SteeringPath,
 };
 
@@ -104,10 +104,25 @@ impl VisualizerApp {
         });
     }
 
+    fn segment_type_label(control: &Control) -> String {
+        let direction = if control.delta_s >= 0.0 { "F" } else { "B" };
+        let curvature = if control.sigma.abs() > 1e-6 {
+            "Cloth"
+        } else if control.kappa > 1e-6 {
+            "L"
+        } else if control.kappa < -1e-6 {
+            "R"
+        } else {
+            "S"
+        };
+        format!("{}{}", direction, curvature)
+    }
+
     fn format_control(control: &Control, index: usize) -> String {
         format!(
-            "{:02}: ds={:+.3}, kappa={:+.3}, sigma={:+.3}",
+            "{:02}: [{}] ds={:+.3}, kappa={:+.3}, sigma={:+.3}",
             index,
+            Self::segment_type_label(control),
             control.delta_s,
             control.kappa,
             control.sigma
@@ -225,15 +240,24 @@ impl eframe::App for VisualizerApp {
 
                 ui.separator();
                 ui.label(RichText::new("Control Commands").strong());
+                ui.label(
+                    RichText::new("F=Forward, B=Backward | L=Left, R=Right, S=Straight, Cloth=Clothoid")
+                        .small(),
+                );
                 ScrollArea::vertical().max_height(280.0).show(ui, |ui| {
                     if self.show_all {
                         for (sequence_index, controls) in planning_data.all_controls.iter().enumerate() {
                             let total_length = Self::path_length(controls);
+                            let type_str: String = controls.iter()
+                                .map(|c| Self::segment_type_label(c))
+                                .collect::<Vec<_>>()
+                                .join("-");
                             ui.label(
                                 RichText::new(format!(
-                                    "Path {} ({:.3} m)",
+                                    "Path {} ({:.3} m) [{}]",
                                     sequence_index + 1,
-                                    total_length
+                                    total_length,
+                                    type_str
                                 ))
                                 .strong(),
                             );
