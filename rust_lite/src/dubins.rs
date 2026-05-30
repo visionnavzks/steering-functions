@@ -1,6 +1,7 @@
-use crate::state::{State, Control};
-use crate::base_state_space::StateSpace;
-use crate::utilities::twopify;
+use std::f64::consts::{PI, TAU};
+use crate::types::{State, Control};
+use crate::state_space::StateSpace;
+use crate::math::{twopify, SEGMENT_EPS};
 
 const DUBINS_LEFT: u8 = 0;
 const DUBINS_STRAIGHT: u8 = 1;
@@ -15,7 +16,6 @@ const DUBINS_PATH_TYPE: [[u8; 3]; 6] = [
     [DUBINS_LEFT, DUBINS_RIGHT, DUBINS_LEFT],
 ];
 
-const DUBINS_EPS: f64 = 1e-6;
 const DUBINS_ZERO: f64 = -1e-9;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -111,7 +111,7 @@ fn dubins_rlr(d: f64, alpha: f64, beta: f64) -> DubinsPath {
     let (cb, sb) = (beta.cos(), beta.sin());
     let tmp = 0.125 * (6.0 - d * d + 2.0 * (ca * cb + sa * sb + d * (sa - sb)));
     if tmp.abs() <= 1.0 {
-        let p = twopify(std::f64::consts::TAU - tmp.acos());
+        let p = twopify(TAU - tmp.acos());
         let theta = (ca - cb).atan2(d - sa + sb);
         let t = twopify(alpha - theta + 0.5 * p);
         let q = twopify(alpha - beta - t + p);
@@ -126,7 +126,7 @@ fn dubins_lrl(d: f64, alpha: f64, beta: f64) -> DubinsPath {
     let (cb, sb) = (beta.cos(), beta.sin());
     let tmp = 0.125 * (6.0 - d * d + 2.0 * (ca * cb + sa * sb - d * (sa - sb)));
     if tmp.abs() <= 1.0 {
-        let p = twopify(std::f64::consts::TAU - tmp.acos());
+        let p = twopify(TAU - tmp.acos());
         let theta = (-ca + cb).atan2(d + sa - sb);
         let t = twopify(-alpha + theta + 0.5 * p);
         let q = twopify(beta - alpha - t + p);
@@ -155,7 +155,7 @@ fn dubins_parameters(q0: &State, q1: &State, rho: f64, forward: bool) -> (f64, f
     let (theta0, theta1) = if forward {
         (q0.theta, q1.theta)
     } else {
-        (q0.theta + std::f64::consts::PI, q1.theta + std::f64::consts::PI)
+        (q0.theta + PI, q1.theta + PI)
     };
     let heading = dy.atan2(dx);
     let alpha = twopify(theta0 - heading);
@@ -191,7 +191,7 @@ fn controls_from_dubins(path: &DubinsPath, rho: f64, forward: bool) -> Vec<Contr
     let mut controls = Vec::new();
     for (&seg_type, &seg_length) in path.type_.iter().zip(path.length_.iter()) {
         let length = seg_length * rho;
-        if length.abs() < DUBINS_EPS { continue; }
+        if length.abs() < SEGMENT_EPS { continue; }
         let (base_kappa, sigma) = match seg_type {
             t if t == DUBINS_LEFT     => (1.0 / rho,  0.0),
             t if t == DUBINS_STRAIGHT => (0.0,        0.0),
@@ -281,9 +281,10 @@ impl StateSpace for DubinsStateSpace {
 #[cfg(test)]
 mod tests {
     use super::{DubinsDirectionMode, DubinsStateSpace};
-    use crate::base_state_space::StateSpace;
-    use crate::state::State;
-    use crate::utilities::pify;
+    use crate::state_space::StateSpace;
+    use crate::types::State;
+    use crate::math::pify;
+    use std::f64::consts::FRAC_PI_4;
 
     #[test]
     fn reverse_only_reaches_goal_pose() {
@@ -297,7 +298,7 @@ mod tests {
         let goal = State {
             x: 3.0,
             y: 2.0,
-            theta: std::f64::consts::FRAC_PI_4,
+            theta: FRAC_PI_4,
             ..State::default()
         };
 

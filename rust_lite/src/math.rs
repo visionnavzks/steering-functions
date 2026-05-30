@@ -6,6 +6,7 @@ pub const SQRT_PI: f64 = 1.7724538509055160273;
 pub const SQRT_PI_INV: f64 = 0.56418958354775628695;
 pub const SQRT_TWO_PI_INV: f64 = 0.39894228040143267794;
 pub const EPSILON: f64 = 1e-4;
+pub const SEGMENT_EPS: f64 = 1e-6;
 
 // Chebyshev coefficients for Fresnel integrals
 const CHEBEV_A: [f64; 18] = [
@@ -58,16 +59,8 @@ const CHEBEV_F: [f64; 35] = [
     -0.00000000000000000001, 0.00000000000000000001,
 ];
 
-pub fn get_epsilon() -> f64 {
-    EPSILON
-}
-
 pub fn sgn(x: f64) -> f64 {
     if x < 0.0 { -1.0 } else { 1.0 }
-}
-
-pub fn point_distance(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
-    ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt()
 }
 
 /// Returns polar coordinates (r, theta).
@@ -94,7 +87,7 @@ pub fn pify(alpha: f64) -> f64 {
 }
 
 /// Fresnel integrals for x in [0, 8]. Returns (S_f, C_f).
-pub fn fresnel_0_8(x: f64) -> (f64, f64) {
+fn fresnel_0_8(x: f64) -> (f64, f64) {
     let quarter_x = 0.25 * x;
     let arg = 0.03125 * x * x - 1.0;
     let t0 = 1.0_f64;
@@ -129,7 +122,7 @@ pub fn fresnel_0_8(x: f64) -> (f64, f64) {
 }
 
 /// Fresnel integrals for x > 8 (asymptotic). Returns (S_f, C_f).
-pub fn fresnel_8_inf(x: f64) -> (f64, f64) {
+fn fresnel_8_inf(x: f64) -> (f64, f64) {
     let arg = 128.0 / (x * x) - 1.0;
     let t0 = 1.0_f64;
     let t2 = arg;
@@ -219,35 +212,4 @@ pub fn end_of_straight_line(
     let x_f = x_i + direction * length * theta.cos();
     let y_f = y_i + direction * length * theta.sin();
     (x_f, y_f)
-}
-
-/// Transform local coordinates to global frame.
-pub fn global_frame_change(x: f64, y: f64, theta: f64, local_x: f64, local_y: f64) -> (f64, f64) {
-    let sin_th = theta.sin();
-    let cos_th = theta.cos();
-    let gx = local_x * cos_th - local_y * sin_th + x;
-    let gy = local_x * sin_th + local_y * cos_th + y;
-    (gx, gy)
-}
-
-/// Transform global coordinates to local frame.
-pub fn local_frame_change(x: f64, y: f64, theta: f64, gx: f64, gy: f64) -> (f64, f64) {
-    let sin_th = theta.sin();
-    let cos_th = theta.cos();
-    let lx = (gx - x) * cos_th + (gy - y) * sin_th;
-    let ly = -(gx - x) * sin_th + (gy - y) * cos_th;
-    (lx, ly)
-}
-
-/// Index of minimum element in a slice.
-pub fn array_index_min(arr: &[f64]) -> usize {
-    let mut min_val = arr[0];
-    let mut idx = 0;
-    for (i, &v) in arr.iter().enumerate().skip(1) {
-        if v < min_val {
-            min_val = v;
-            idx = i;
-        }
-    }
-    idx
 }

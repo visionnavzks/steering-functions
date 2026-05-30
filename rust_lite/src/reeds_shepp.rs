@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
-use crate::state::{State, Control};
-use crate::base_state_space::StateSpace;
-use crate::utilities::pify;
+use crate::types::{State, Control};
+use crate::state_space::StateSpace;
+use crate::math::{pify, polar, SEGMENT_EPS};
 
 const RS_NOP: u8 = 0;
 const RS_LEFT: u8 = 1;
@@ -29,7 +29,6 @@ const RS_PATH_TYPE: [[u8; 5]; 18] = [
     [RS_RIGHT, RS_LEFT, RS_STRAIGHT, RS_RIGHT, RS_LEFT],
 ];
 
-const RS_EPS: f64 = 1e-6;
 const RS_ZERO: f64 = 10.0 * f64::EPSILON;
 
 #[derive(Clone, Debug)]
@@ -66,7 +65,6 @@ fn tau_omega(u: f64, v: f64, xi: f64, eta: f64, phi: f64) -> (f64, f64) {
 }
 
 fn lp_sp_lp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let (u, t) = polar(x - phi.sin(), y - 1.0 + phi.cos());
     if t >= -RS_ZERO {
         let v = pify(phi - t);
@@ -76,7 +74,6 @@ fn lp_sp_lp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
 }
 
 fn lp_sp_rp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let (u1, t1) = polar(x + phi.sin(), y - 1.0 - phi.cos());
     let u1sq = u1 * u1;
     if u1sq >= 4.0 {
@@ -90,7 +87,6 @@ fn lp_sp_rp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
 }
 
 fn lp_rm_l(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let xi = x - phi.sin();
     let eta = y - 1.0 + phi.cos();
     let (u1, theta) = polar(xi, eta);
@@ -130,7 +126,6 @@ fn lp_rum_lum_rp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
 }
 
 fn lp_rm_sm_lm(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let xi = x - phi.sin();
     let eta = y - 1.0 + phi.cos();
     let (rho, theta) = polar(xi, eta);
@@ -145,7 +140,6 @@ fn lp_rm_sm_lm(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
 }
 
 fn lp_rm_sm_rm(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let xi = x + phi.sin();
     let eta = y - 1.0 - phi.cos();
     let (rho, theta) = polar(-eta, xi);
@@ -159,7 +153,6 @@ fn lp_rm_sm_rm(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
 }
 
 fn lp_rm_s_lm_rp(x: f64, y: f64, phi: f64) -> Option<(f64, f64, f64)> {
-    use crate::utilities::polar;
     let xi = x + phi.sin();
     let eta = y - 1.0 - phi.cos();
     let (rho, _theta) = polar(xi, eta);
@@ -321,7 +314,7 @@ fn controls_from_rs(path: &RsPath, kappa_inv: f64) -> Vec<Control> {
         let seg = path.type_[i];
         if seg == RS_NOP { break; }
         let delta_s = kappa_inv * path.length_[i];
-        if delta_s.abs() <= RS_EPS { continue; }
+        if delta_s.abs() <= SEGMENT_EPS { continue; }
         let kappa = match seg {
             RS_LEFT  =>  1.0 / kappa_inv,
             RS_RIGHT => -1.0 / kappa_inv,

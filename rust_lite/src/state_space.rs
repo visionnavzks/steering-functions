@@ -1,6 +1,6 @@
-use crate::state::{State, Control};
-use crate::utilities::{
-    sgn, get_epsilon,
+use crate::types::{State, Control};
+use crate::math::{
+    sgn, EPSILON,
     end_of_clothoid, end_of_circular_arc, end_of_straight_line,
 };
 
@@ -10,7 +10,7 @@ fn integrate_ode_step(state: &State, control: &Control, integration_step: f64) -
     let sigma = control.sigma;
     let d = sgn(control.delta_s);
 
-    if sigma.abs() > get_epsilon() {
+    if sigma.abs() > EPSILON {
         let (xf, yf, tf, kf) = end_of_clothoid(
             state.x, state.y, state.theta, state.kappa,
             sigma, d, integration_step,
@@ -20,7 +20,7 @@ fn integrate_ode_step(state: &State, control: &Control, integration_step: f64) -
         next.theta = tf;
         next.kappa = kf;
         next.sigma = sigma;
-    } else if kappa.abs() > get_epsilon() {
+    } else if kappa.abs() > EPSILON {
         let (xf, yf, tf) = end_of_circular_arc(
             state.x, state.y, state.theta,
             kappa, d, integration_step,

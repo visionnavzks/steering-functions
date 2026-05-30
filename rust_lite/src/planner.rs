@@ -1,7 +1,7 @@
-use crate::base_state_space::StateSpace;
+use crate::state_space::StateSpace;
 use crate::dubins::{DubinsDirectionMode, DubinsStateSpace};
 use crate::reeds_shepp::ReedsSheppStateSpace;
-use crate::state::{Control, State};
+use crate::types::{Control, State};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
